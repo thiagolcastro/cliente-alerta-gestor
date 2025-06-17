@@ -1,11 +1,176 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState } from 'react';
+import { Plus, Users, Calendar, Mail, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ClientForm from '@/components/ClientForm';
+import ClientList from '@/components/ClientList';
+import AutomationPanel from '@/components/AutomationPanel';
+import StatsCard from '@/components/StatsCard';
+
+export interface Client {
+  id: string;
+  nome: string;
+  email: string;
+  telefone: string;
+  whatsapp: string;
+  endereco: string;
+  bairro: string;
+  cidade: string;
+  cep: string;
+  estado: string;
+  dataNascimento: string;
+  profissao: string;
+  empresa: string;
+  observacoes: string;
+  ultimaCompra: string;
+  valorUltimaCompra: number;
+  createdAt: string;
+}
 
 const Index = () => {
+  const [clients, setClients] = useState<Client[]>([]);
+  const [showForm, setShowForm] = useState(false);
+
+  const addClient = (client: Omit<Client, 'id' | 'createdAt'>) => {
+    const newClient: Client = {
+      ...client,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    setClients([...clients, newClient]);
+    setShowForm(false);
+  };
+
+  const deleteClient = (id: string) => {
+    setClients(clients.filter(client => client.id !== id));
+  };
+
+  const totalClients = clients.length;
+  const clientsThisMonth = clients.filter(client => {
+    const clientDate = new Date(client.createdAt);
+    const now = new Date();
+    return clientDate.getMonth() === now.getMonth() && clientDate.getFullYear() === now.getFullYear();
+  }).length;
+
+  const birthdaysThisMonth = clients.filter(client => {
+    if (!client.dataNascimento) return false;
+    const birthday = new Date(client.dataNascimento);
+    const now = new Date();
+    return birthday.getMonth() === now.getMonth();
+  }).length;
+
+  const inactiveClients = clients.filter(client => {
+    if (!client.ultimaCompra) return true;
+    const lastPurchase = new Date(client.ultimaCompra);
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    return lastPurchase < threeMonthsAgo;
+  }).length;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+      <div className="container mx-auto p-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              Gerenciador de Clientes
+            </h1>
+            <p className="text-gray-600 mt-2">Gerencie seus clientes e automatize suas comunicações</p>
+          </div>
+          <Button 
+            onClick={() => setShowForm(true)}
+            className="mt-4 md:mt-0 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transform hover:scale-105 transition-all duration-200"
+            size="lg"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Novo Cliente
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatsCard
+            title="Total de Clientes"
+            value={totalClients}
+            icon={Users}
+            color="from-blue-500 to-cyan-500"
+          />
+          <StatsCard
+            title="Novos este Mês"
+            value={clientsThisMonth}
+            icon={TrendingUp}
+            color="from-green-500 to-emerald-500"
+          />
+          <StatsCard
+            title="Aniversários este Mês"
+            value={birthdaysThisMonth}
+            icon={Calendar}
+            color="from-purple-500 to-pink-500"
+          />
+          <StatsCard
+            title="Clientes Inativos"
+            value={inactiveClients}
+            icon={Mail}
+            color="from-orange-500 to-red-500"
+          />
+        </div>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <Card className="shadow-xl border-0 bg-white/70 backdrop-blur-sm">
+              <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-t-lg">
+                <CardTitle className="flex items-center">
+                  <Users className="mr-2 h-5 w-5" />
+                  Lista de Clientes
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <ClientList clients={clients} onDeleteClient={deleteClient} />
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div>
+            <Card className="shadow-xl border-0 bg-white/70 backdrop-blur-sm">
+              <CardHeader className="bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-t-lg">
+                <CardTitle className="flex items-center">
+                  <Mail className="mr-2 h-5 w-5" />
+                  Automação
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <AutomationPanel clients={clients} />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Client Form Modal */}
+        {showForm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    Novo Cliente
+                  </h2>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setShowForm(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </Button>
+                </div>
+                <ClientForm onSubmit={addClient} onCancel={() => setShowForm(false)} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
