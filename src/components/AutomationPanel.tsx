@@ -1,8 +1,11 @@
+
 import { useState } from 'react';
-import { Send, Calendar, Mail as MailIcon, Gift } from 'lucide-react';
+import { Send, Calendar, Mail as MailIcon, Gift, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Client } from '@/pages/Index';
 import { emailService } from '@/services/emailService';
@@ -18,6 +21,8 @@ const AutomationPanel = ({ clients }: AutomationPanelProps) => {
     promotion: false,
     inactive: false
   });
+  
+  const [inactiveMonths, setInactiveMonths] = useState(3);
   
   const [birthdayMessage, setBirthdayMessage] = useState(
     "🎉 Parabéns pelo seu aniversário! Desejamos muito sucesso e felicidades. Aproveite nosso desconto especial de 15% válido até o final do mês!"
@@ -48,13 +53,13 @@ const AutomationPanel = ({ clients }: AutomationPanelProps) => {
   };
 
   const getInactiveClients = () => {
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const thresholdDate = new Date();
+    thresholdDate.setMonth(thresholdDate.getMonth() - inactiveMonths);
     
     return clients.filter(client => {
       if (!client.ultimaCompra) return true;
       const lastPurchase = new Date(client.ultimaCompra);
-      return lastPurchase < threeMonthsAgo;
+      return lastPurchase < thresholdDate;
     });
   };
 
@@ -195,14 +200,29 @@ const AutomationPanel = ({ clients }: AutomationPanelProps) => {
       <Card className="border-orange-200">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center text-orange-700">
-            <MailIcon className="mr-2 h-4 w-4" />
+            <Settings className="mr-2 h-4 w-4" />
             Clientes Inativos
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="inactiveMonths" className="text-sm">
+                Considerar inativo após:
+              </Label>
+              <Input
+                id="inactiveMonths"
+                type="number"
+                min="1"
+                max="12"
+                value={inactiveMonths}
+                onChange={(e) => setInactiveMonths(parseInt(e.target.value) || 3)}
+                className="w-20 h-8"
+              />
+              <span className="text-sm text-gray-600">meses</span>
+            </div>
             <div className="text-sm text-gray-600">
-              <p><strong>Inativos (3+ meses):</strong> {inactiveClients.length} cliente(s)</p>
+              <p><strong>Inativos ({inactiveMonths}+ meses):</strong> {inactiveClients.length} cliente(s)</p>
             </div>
             <Textarea
               value={inactiveMessage}

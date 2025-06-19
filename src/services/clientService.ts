@@ -41,19 +41,19 @@ export const clientService = {
       .insert([{
         nome: client.nome,
         email: client.email,
-        telefone: client.telefone,
-        whatsapp: client.whatsapp,
-        endereco: client.endereco,
-        bairro: client.bairro,
-        cidade: client.cidade,
-        cep: client.cep,
-        estado: client.estado,
-        data_nascimento: client.dataNascimento,
-        profissao: client.profissao,
-        empresa: client.empresa,
-        observacoes: client.observacoes,
-        ultima_compra: client.ultimaCompra,
-        valor_ultima_compra: client.valorUltimaCompra
+        telefone: client.telefone || null,
+        whatsapp: client.whatsapp || null,
+        endereco: client.endereco || null,
+        bairro: client.bairro || null,
+        cidade: client.cidade || null,
+        cep: client.cep || null,
+        estado: client.estado || null,
+        data_nascimento: client.dataNascimento || null,
+        profissao: client.profissao || null,
+        empresa: client.empresa || null,
+        observacoes: client.observacoes || null,
+        ultima_compra: client.ultimaCompra || null,
+        valor_ultima_compra: client.valorUltimaCompra || 0
       }])
       .select()
       .single();
@@ -90,19 +90,19 @@ export const clientService = {
       .update({
         nome: client.nome,
         email: client.email,
-        telefone: client.telefone,
-        whatsapp: client.whatsapp,
-        endereco: client.endereco,
-        bairro: client.bairro,
-        cidade: client.cidade,
-        cep: client.cep,
-        estado: client.estado,
-        data_nascimento: client.dataNascimento,
-        profissao: client.profissao,
-        empresa: client.empresa,
-        observacoes: client.observacoes,
-        ultima_compra: client.ultimaCompra,
-        valor_ultima_compra: client.valorUltimaCompra
+        telefone: client.telefone || null,
+        whatsapp: client.whatsapp || null,
+        endereco: client.endereco || null,
+        bairro: client.bairro || null,
+        cidade: client.cidade || null,
+        cep: client.cep || null,
+        estado: client.estado || null,
+        data_nascimento: client.dataNascimento || null,
+        profissao: client.profissao || null,
+        empresa: client.empresa || null,
+        observacoes: client.observacoes || null,
+        ultima_compra: client.ultimaCompra || null,
+        valor_ultima_compra: client.valorUltimaCompra || 0
       })
       .eq('id', id)
       .select()

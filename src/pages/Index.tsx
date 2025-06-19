@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Plus, Users, Calendar, Mail, TrendingUp, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ const Index = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [inactiveMonths, setInactiveMonths] = useState(3);
 
   useEffect(() => {
     loadClients();
@@ -131,9 +133,9 @@ const Index = () => {
   const inactiveClients = clients.filter(client => {
     if (!client.ultimaCompra) return true;
     const lastPurchase = new Date(client.ultimaCompra);
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    return lastPurchase < threeMonthsAgo;
+    const thresholdDate = new Date();
+    thresholdDate.setMonth(thresholdDate.getMonth() - inactiveMonths);
+    return lastPurchase < thresholdDate;
   }).length;
 
   if (isLoading) {

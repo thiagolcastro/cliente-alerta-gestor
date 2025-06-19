@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Search, Trash2, Phone, Mail as MailIcon, Calendar, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,9 +10,10 @@ interface ClientListProps {
   clients: Client[];
   onDeleteClient: (id: string) => void;
   onEditClient: (client: Client) => void;
+  inactiveMonths?: number;
 }
 
-const ClientList = ({ clients, onDeleteClient, onEditClient }: ClientListProps) => {
+const ClientList = ({ clients, onDeleteClient, onEditClient, inactiveMonths = 3 }: ClientListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredClients = clients.filter(client =>
@@ -35,9 +37,9 @@ const ClientList = ({ clients, onDeleteClient, onEditClient }: ClientListProps) 
   const isInactive = (ultimaCompra: string) => {
     if (!ultimaCompra) return true;
     const lastPurchase = new Date(ultimaCompra);
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    return lastPurchase < threeMonthsAgo;
+    const thresholdDate = new Date();
+    thresholdDate.setMonth(thresholdDate.getMonth() - inactiveMonths);
+    return lastPurchase < thresholdDate;
   };
 
   const isBirthdayThisMonth = (dataNascimento: string) => {
