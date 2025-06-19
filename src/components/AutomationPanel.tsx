@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Send, Calendar, Mail as MailIcon, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Client } from '@/pages/Index';
+import { emailService } from '@/services/emailService';
 
 interface AutomationPanelProps {
   clients: Client[];
@@ -13,6 +13,12 @@ interface AutomationPanelProps {
 
 const AutomationPanel = ({ clients }: AutomationPanelProps) => {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState({
+    birthday: false,
+    promotion: false,
+    inactive: false
+  });
+  
   const [birthdayMessage, setBirthdayMessage] = useState(
     "🎉 Parabéns pelo seu aniversário! Desejamos muito sucesso e felicidades. Aproveite nosso desconto especial de 15% válido até o final do mês!"
   );
@@ -52,33 +58,66 @@ const AutomationPanel = ({ clients }: AutomationPanelProps) => {
     });
   };
 
-  const sendBirthdayMessages = () => {
+  const sendBirthdayMessages = async () => {
     const birthdayClients = getBirthdayClients();
-    console.log('Enviando mensagens de aniversário para:', birthdayClients);
+    setIsLoading(prev => ({ ...prev, birthday: true }));
     
-    toast({
-      title: "Mensagens de Aniversário Enviadas!",
-      description: `${birthdayClients.length} mensagem(ns) de aniversário enviada(s) com sucesso!`,
-    });
+    try {
+      await emailService.sendBirthdayEmails(birthdayClients, birthdayMessage);
+      toast({
+        title: "Emails de Aniversário Enviados!",
+        description: `${birthdayClients.length} email(s) de aniversário enviado(s) com sucesso!`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao Enviar Emails",
+        description: "Houve um problema ao enviar os emails de aniversário.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, birthday: false }));
+    }
   };
 
-  const sendPromotionMessages = () => {
-    console.log('Enviando mensagens promocionais para todos os clientes:', clients);
+  const sendPromotionMessages = async () => {
+    setIsLoading(prev => ({ ...prev, promotion: true }));
     
-    toast({
-      title: "Promoção Enviada!",
-      description: `Mensagem promocional enviada para ${clients.length} cliente(s)!`,
-    });
+    try {
+      await emailService.sendPromotionEmails(clients, promotionMessage);
+      toast({
+        title: "Emails Promocionais Enviados!",
+        description: `Email promocional enviado para ${clients.length} cliente(s)!`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao Enviar Emails",
+        description: "Houve um problema ao enviar os emails promocionais.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, promotion: false }));
+    }
   };
 
-  const sendInactiveMessages = () => {
+  const sendInactiveMessages = async () => {
     const inactiveClients = getInactiveClients();
-    console.log('Enviando mensagens para clientes inativos:', inactiveClients);
+    setIsLoading(prev => ({ ...prev, inactive: true }));
     
-    toast({
-      title: "Mensagens para Inativos Enviadas!",
-      description: `${inactiveClients.length} mensagem(ns) enviada(s) para clientes inativos!`,
-    });
+    try {
+      await emailService.sendInactiveEmails(inactiveClients, inactiveMessage);
+      toast({
+        title: "Emails para Inativos Enviados!",
+        description: `${inactiveClients.length} email(s) enviado(s) para clientes inativos!`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao Enviar Emails",
+        description: "Houve um problema ao enviar os emails para clientes inativos.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, inactive: false }));
+    }
   };
 
   const todayBirthdays = getBirthdayClients();
@@ -109,12 +148,12 @@ const AutomationPanel = ({ clients }: AutomationPanelProps) => {
             />
             <Button
               onClick={sendBirthdayMessages}
-              disabled={todayBirthdays.length === 0}
+              disabled={todayBirthdays.length === 0 || isLoading.birthday}
               className="w-full bg-purple-600 hover:bg-purple-700"
               size="sm"
             >
               <Send className="mr-2 h-3 w-3" />
-              Enviar para Aniversariantes
+              {isLoading.birthday ? 'Enviando...' : 'Enviar para Aniversariantes'}
             </Button>
           </div>
         </CardContent>
@@ -141,12 +180,12 @@ const AutomationPanel = ({ clients }: AutomationPanelProps) => {
             />
             <Button
               onClick={sendPromotionMessages}
-              disabled={clients.length === 0}
+              disabled={clients.length === 0 || isLoading.promotion}
               className="w-full bg-green-600 hover:bg-green-700"
               size="sm"
             >
               <Send className="mr-2 h-3 w-3" />
-              Enviar Promoção
+              {isLoading.promotion ? 'Enviando...' : 'Enviar Promoção'}
             </Button>
           </div>
         </CardContent>
@@ -173,19 +212,19 @@ const AutomationPanel = ({ clients }: AutomationPanelProps) => {
             />
             <Button
               onClick={sendInactiveMessages}
-              disabled={inactiveClients.length === 0}
+              disabled={inactiveClients.length === 0 || isLoading.inactive}
               className="w-full bg-orange-600 hover:bg-orange-700"
               size="sm"
             >
               <Send className="mr-2 h-3 w-3" />
-              Reativar Clientes
+              {isLoading.inactive ? 'Enviando...' : 'Reativar Clientes'}
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <div className="text-xs text-gray-500 text-center pt-2">
-        💡 As mensagens são simuladas no console do navegador
+        📧 Emails reais serão enviados via Supabase Edge Functions
       </div>
     </div>
   );

@@ -1,17 +1,18 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { Client } from '@/pages/Index';
 
 interface ClientFormProps {
   onSubmit: (client: any) => void;
   onCancel: () => void;
+  initialData?: Client | null;
 }
 
-const ClientForm = ({ onSubmit, onCancel }: ClientFormProps) => {
+const ClientForm = ({ onSubmit, onCancel, initialData }: ClientFormProps) => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     nome: '',
@@ -30,6 +31,47 @@ const ClientForm = ({ onSubmit, onCancel }: ClientFormProps) => {
     ultimaCompra: '',
     valorUltimaCompra: 0,
   });
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        nome: initialData.nome || '',
+        email: initialData.email || '',
+        telefone: initialData.telefone || '',
+        whatsapp: initialData.whatsapp || '',
+        endereco: initialData.endereco || '',
+        bairro: initialData.bairro || '',
+        cidade: initialData.cidade || '',
+        cep: initialData.cep || '',
+        estado: initialData.estado || '',
+        dataNascimento: initialData.dataNascimento || '',
+        profissao: initialData.profissao || '',
+        empresa: initialData.empresa || '',
+        observacoes: initialData.observacoes || '',
+        ultimaCompra: initialData.ultimaCompra || '',
+        valorUltimaCompra: initialData.valorUltimaCompra || 0,
+      });
+    } else {
+      // Reset form when not editing
+      setFormData({
+        nome: '',
+        email: '',
+        telefone: '',
+        whatsapp: '',
+        endereco: '',
+        bairro: '',
+        cidade: '',
+        cep: '',
+        estado: '',
+        dataNascimento: '',
+        profissao: '',
+        empresa: '',
+        observacoes: '',
+        ultimaCompra: '',
+        valorUltimaCompra: 0,
+      });
+    }
+  }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -52,10 +94,6 @@ const ClientForm = ({ onSubmit, onCancel }: ClientFormProps) => {
     }
 
     onSubmit(formData);
-    toast({
-      title: "Sucesso!",
-      description: "Cliente adicionado com sucesso",
-    });
   };
 
   return (
@@ -237,7 +275,7 @@ const ClientForm = ({ onSubmit, onCancel }: ClientFormProps) => {
           type="submit"
           className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
         >
-          Salvar Cliente
+          {initialData ? 'Atualizar Cliente' : 'Salvar Cliente'}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
           Cancelar

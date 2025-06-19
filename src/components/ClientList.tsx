@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Search, Trash2, Phone, Mail as MailIcon, Calendar } from 'lucide-react';
+import { Search, Trash2, Phone, Mail as MailIcon, Calendar, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,9 +8,10 @@ import { Client } from '@/pages/Index';
 interface ClientListProps {
   clients: Client[];
   onDeleteClient: (id: string) => void;
+  onEditClient: (client: Client) => void;
 }
 
-const ClientList = ({ clients, onDeleteClient }: ClientListProps) => {
+const ClientList = ({ clients, onDeleteClient, onEditClient }: ClientListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredClients = clients.filter(client =>
@@ -129,14 +129,24 @@ const ClientList = ({ clients, onDeleteClient }: ClientListProps) => {
                     )}
                   </div>
                   
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onDeleteClient(client.id)}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEditClient(client)}
+                      className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDeleteClient(client.id)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
