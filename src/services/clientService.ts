@@ -1,5 +1,5 @@
 
-import { supabase } from '@/hooks/useSupabase';
+import { supabase } from '@/integrations/supabase/client';
 import { Client } from '@/pages/Index';
 
 export const clientService = {
@@ -14,7 +14,25 @@ export const clientService = {
       throw error;
     }
     
-    return data || [];
+    return data?.map(client => ({
+      id: client.id,
+      nome: client.nome,
+      email: client.email,
+      telefone: client.telefone || '',
+      whatsapp: client.whatsapp || '',
+      endereco: client.endereco || '',
+      bairro: client.bairro || '',
+      cidade: client.cidade || '',
+      cep: client.cep || '',
+      estado: client.estado || '',
+      dataNascimento: client.data_nascimento || '',
+      profissao: client.profissao || '',
+      empresa: client.empresa || '',
+      observacoes: client.observacoes || '',
+      ultimaCompra: client.ultima_compra || '',
+      valorUltimaCompra: client.valor_ultima_compra || 0,
+      createdAt: client.created_at
+    })) || [];
   },
 
   async createClient(client: Omit<Client, 'id' | 'createdAt'>): Promise<Client> {
@@ -49,19 +67,19 @@ export const clientService = {
       id: data.id,
       nome: data.nome,
       email: data.email,
-      telefone: data.telefone,
-      whatsapp: data.whatsapp,
-      endereco: data.endereco,
-      bairro: data.bairro,
-      cidade: data.cidade,
-      cep: data.cep,
-      estado: data.estado,
-      dataNascimento: data.data_nascimento,
-      profissao: data.profissao,
-      empresa: data.empresa,
-      observacoes: data.observacoes,
-      ultimaCompra: data.ultima_compra,
-      valorUltimaCompra: data.valor_ultima_compra,
+      telefone: data.telefone || '',
+      whatsapp: data.whatsapp || '',
+      endereco: data.endereco || '',
+      bairro: data.bairro || '',
+      cidade: data.cidade || '',
+      cep: data.cep || '',
+      estado: data.estado || '',
+      dataNascimento: data.data_nascimento || '',
+      profissao: data.profissao || '',
+      empresa: data.empresa || '',
+      observacoes: data.observacoes || '',
+      ultimaCompra: data.ultima_compra || '',
+      valorUltimaCompra: data.valor_ultima_compra || 0,
       createdAt: data.created_at
     };
   },
@@ -99,19 +117,19 @@ export const clientService = {
       id: data.id,
       nome: data.nome,
       email: data.email,
-      telefone: data.telefone,
-      whatsapp: data.whatsapp,
-      endereco: data.endereco,
-      bairro: data.bairro,
-      cidade: data.cidade,
-      cep: data.cep,
-      estado: data.estado,
-      dataNascimento: data.data_nascimento,
-      profissao: data.profissao,
-      empresa: data.empresa,
-      observacoes: data.observacoes,
-      ultimaCompra: data.ultima_compra,
-      valorUltimaCompra: data.valor_ultima_compra,
+      telefone: data.telefone || '',
+      whatsapp: data.whatsapp || '',
+      endereco: data.endereco || '',
+      bairro: data.bairro || '',
+      cidade: data.cidade || '',
+      cep: data.cep || '',
+      estado: data.estado || '',
+      dataNascimento: data.data_nascimento || '',
+      profissao: data.profissao || '',
+      empresa: data.empresa || '',
+      observacoes: data.observacoes || '',
+      ultimaCompra: data.ultima_compra || '',
+      valorUltimaCompra: data.valor_ultima_compra || 0,
       createdAt: data.created_at
     };
   },

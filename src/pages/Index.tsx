@@ -1,11 +1,12 @@
-
 import { useState, useEffect } from 'react';
-import { Plus, Users, Calendar, Mail, TrendingUp } from 'lucide-react';
+import { Plus, Users, Calendar, Mail, TrendingUp, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ClientForm from '@/components/ClientForm';
 import ClientList from '@/components/ClientList';
 import AutomationPanel from '@/components/AutomationPanel';
+import BillingPanel from '@/components/BillingPanel';
 import StatsCard from '@/components/StatsCard';
 import { clientService } from '@/services/clientService';
 import { useToast } from '@/hooks/use-toast';
@@ -155,7 +156,7 @@ const Index = () => {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
               Gerenciador de Clientes
             </h1>
-            <p className="text-gray-600 mt-2">Gerencie seus clientes e automatize suas comunicações</p>
+            <p className="text-gray-600 mt-2">Gerencie seus clientes, automatize comunicações e controle cobranças</p>
           </div>
           <Button 
             onClick={() => {
@@ -198,9 +199,24 @@ const Index = () => {
           />
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        {/* Main Content with Tabs */}
+        <Tabs defaultValue="clientes" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="clientes" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Clientes
+            </TabsTrigger>
+            <TabsTrigger value="automacao" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Automação
+            </TabsTrigger>
+            <TabsTrigger value="cobrancas" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Cobranças
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="clientes">
             <Card className="shadow-xl border-0 bg-white/70 backdrop-blur-sm">
               <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-t-lg">
                 <CardTitle className="flex items-center">
@@ -216,22 +232,36 @@ const Index = () => {
                 />
               </CardContent>
             </Card>
-          </div>
-          
-          <div>
+          </TabsContent>
+
+          <TabsContent value="automacao">
             <Card className="shadow-xl border-0 bg-white/70 backdrop-blur-sm">
               <CardHeader className="bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-t-lg">
                 <CardTitle className="flex items-center">
                   <Mail className="mr-2 h-5 w-5" />
-                  Automação
+                  Automação de Emails
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <AutomationPanel clients={clients} />
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="cobrancas">
+            <Card className="shadow-xl border-0 bg-white/70 backdrop-blur-sm">
+              <CardHeader className="bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-t-lg">
+                <CardTitle className="flex items-center">
+                  <DollarSign className="mr-2 h-5 w-5" />
+                  Gestão de Cobranças
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <BillingPanel clients={clients} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Client Form Modal */}
         {showForm && (
