@@ -1,14 +1,17 @@
 
-import { useState } from 'react';
-import { Send, Mail, MessageSquare, Bell } from 'lucide-react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { Send, MessageSquare, Mail } from 'lucide-react';
 import { Client } from '@/pages/Index';
 import { ClientTag } from './ClientTags';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationPanelProps {
   clients: Client[];
@@ -18,33 +21,51 @@ interface NotificationPanelProps {
 const NotificationPanel = ({ clients, clientTags }: NotificationPanelProps) => {
   const { toast } = useToast();
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
-  const [messageType, setMessageType] = useState<'email' | 'whatsapp' | 'both'>('email');
-  const [campaignType, setCampaignType] = useState<'promocional' | 'lembrete' | 'personalizada'>('promocional');
-  const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [channel, setChannel] = useState<'email' | 'whatsapp'>('email');
+  const [filterTag, setFilterTag] = useState<string>('all');
+  const [sending, setSending] = useState(false);
 
-  const handleClientToggle = (clientId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedClients([...selectedClients, clientId]);
-    } else {
-      setSelectedClients(selectedClients.filter(id => id !== clientId));
-    }
+  // Obter todas as tags únicas
+  const allTags = React.useMemo(() => {
+    const tagsSet = new Set();
+    Object.values(clientTags).flat().forEach(tag => tagsSet.add(JSON.stringify(tag)));
+    return Array.from(tagsSet).map(tag => JSON.parse(tag as string));
+  }, [clientTags]);
+
+  // Filtrar clientes por tag
+  const filteredClients = React.useMemo(() => {
+    if (filterTag === 'all') return clients;
+    
+    return clients.filter(client => {
+      const clientTagIds = clientTags[client.id]?.map(tag => tag.id) || [];
+      return clientTagIds.includes(filterTag);
+    });
+  }, [clients, filterTag, clientTags]);
+
+  const handleClientSelection = (clientId: string) => {
+    setSelectedClients(prev => 
+      prev.includes(clientId) 
+        ? prev.filter(id => id !== clientId)
+        : [...prev, clientId]
+    );
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedClients(clients.map(client => client.id));
-    } else {
-      setSelectedClients([]);
-    }
+  const selectAllClients = () => {
+    setSelectedClients(filteredClients.map(client => client.id));
   };
 
-  const handleSendNotifications = async () => {
+  const clearSelection = () => {
+    setSelectedClients([]);
+  };
+
+  const sendNotifications = async () => {
     if (selectedClients.length === 0) {
       toast({
         title: "Erro",
-        description: "Selecione pelo menos um cliente",
-        variant: "destructive"
+        description: "Selecione pelo menos um cliente para enviar a notificação.",
+        variant: "destructive",
       });
       return;
     }
@@ -52,217 +73,295 @@ const NotificationPanel = ({ clients, clientTags }: NotificationPanelProps) => {
     if (!message.trim()) {
       toast({
         title: "Erro",
-        description: "Digite uma mensagem",
-        variant: "destructive"
+        description: "Digite uma mensagem para enviar.",
+        variant: "destructive",
       });
       return;
     }
 
+    if (channel === 'email' && !subject.trim()) {
+      toast({
+        title: "Erro",
+        description: "Digite um assunto para o email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSending(true);
+
     try {
-      // Simulação do envio (substituir por integração real)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const selectedClientData = clients.filter(client => selectedClients.includes(client.id));
+      let successCount = 0;
+      let errorCount = 0;
 
-      toast({
-        title: "Mensagens enviadas!",
-        description: `${selectedClients.length} mensagem(ns) enviada(s) com sucesso`
-      });
+      for (const client of selectedClientData) {
+        try {
+          if (channel === 'email') {
+            if (!client.email) {
+              console.warn(`Cliente ${client.nome} não possui email`);
+              errorCount++;
+              continue;
+            }
 
-      setSelectedClients([]);
-      setMessage('');
-      setSubject('');
+            const html = `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #7c3aed;">Olá, ${client.nome}!</h2>
+                <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  ${message.replace(/\n/g, '<br>')}
+                </div>
+                <p style="color: #64748b; font-size: 14px;">
+                  Esta mensagem foi enviada através do seu sistema de gerenciamento de clientes.
+                </p>
+              </div>
+            `;
+
+            const { error } = await supabase.functions.invoke('send-email-notification', {
+              body: {
+                to: client.email,
+                subject: subject,
+                html: html
+              }
+            });
+
+            if (error) {
+              console.error(`Erro ao enviar email para ${client.nome}:`, error);
+              errorCount++;
+            } else {
+              successCount++;
+            }
+          } else {
+            // WhatsApp
+            if (!client.whatsapp) {
+              console.warn(`Cliente ${client.nome} não possui WhatsApp`);
+              errorCount++;
+              continue;
+            }
+
+            const whatsappMessage = `Olá, ${client.nome}!\n\n${message}`;
+
+            const { error } = await supabase.functions.invoke('send-whatsapp-message', {
+              body: {
+                to: client.whatsapp,
+                message: whatsappMessage
+              }
+            });
+
+            if (error) {
+              console.error(`Erro ao enviar WhatsApp para ${client.nome}:`, error);
+              errorCount++;
+            } else {
+              successCount++;
+            }
+          }
+        } catch (error) {
+          console.error(`Erro ao processar cliente ${client.nome}:`, error);
+          errorCount++;
+        }
+      }
+
+      // Mostrar resultado
+      if (successCount > 0 && errorCount === 0) {
+        toast({
+          title: "Mensagens enviadas com sucesso!",
+          description: `${successCount} mensagem(ns) enviada(s) via ${channel === 'email' ? 'email' : 'WhatsApp'}.`,
+        });
+      } else if (successCount > 0 && errorCount > 0) {
+        toast({
+          title: "Envio parcialmente concluído",
+          description: `${successCount} enviada(s) com sucesso, ${errorCount} falharam.`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Erro no envio",
+          description: `Não foi possível enviar as mensagens. Verifique as configurações.`,
+          variant: "destructive",
+        });
+      }
+
+      // Limpar formulário em caso de sucesso
+      if (successCount > 0) {
+        setMessage('');
+        setSubject('');
+        setSelectedClients([]);
+      }
+
     } catch (error) {
+      console.error('Erro geral no envio:', error);
       toast({
-        title: "Erro ao enviar",
-        description: "Houve um problema ao enviar as mensagens",
-        variant: "destructive"
+        title: "Erro no envio",
+        description: "Ocorreu um erro inesperado. Tente novamente.",
+        variant: "destructive",
       });
-    }
-  };
-
-  const predefinedMessages = {
-    promocional: {
-      subject: '🌟 Promoção Especial - Semijoias Alanna',
-      message: 'Olá {nome}! Temos uma promoção especial esperando por você! Confira nossas novidades e aproveite descontos exclusivos. Acesse: https://catalogo-alanna.kyte.site/en'
-    },
-    lembrete: {
-      subject: '💎 Que saudades! - Semijoias Alanna',
-      message: 'Oi {nome}! Notamos que faz um tempo que você não visita nossa loja. Que tal conferir nossas novidades? Temos peças lindas esperando por você!'
-    }
-  };
-
-  const handleCampaignTypeChange = (type: 'promocional' | 'lembrete' | 'personalizada') => {
-    setCampaignType(type);
-    if (type !== 'personalizada' && predefinedMessages[type]) {
-      setSubject(predefinedMessages[type].subject);
-      setMessage(predefinedMessages[type].message);
-    } else {
-      setSubject('');
-      setMessage('');
+    } finally {
+      setSending(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Seleção de Clientes */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Selecionar Destinatários
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="select-all"
-                  checked={selectedClients.length === clients.length}
-                  onCheckedChange={handleSelectAll}
-                />
-                <label htmlFor="select-all" className="text-sm font-medium">
-                  Selecionar todos ({clients.length})
-                </label>
-              </div>
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                {clients.map(client => (
-                  <div key={client.id} className="flex items-center justify-between p-2 border rounded">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={client.id}
-                        checked={selectedClients.includes(client.id)}
-                        onCheckedChange={(checked) => handleClientToggle(client.id, checked as boolean)}
-                      />
-                      <div>
-                        <label htmlFor={client.id} className="text-sm font-medium cursor-pointer">
-                          {client.nome}
-                        </label>
-                        <p className="text-xs text-gray-500">{client.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {clientTags[client.id]?.slice(0, 2).map(tag => (
-                        <span key={tag.id} className={`text-xs px-1 py-0.5 rounded ${tag.color}`}>
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="text-sm text-gray-600">
-                {selectedClients.length} cliente(s) selecionado(s)
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Configuração da Mensagem */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Configurar Mensagem
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Tipo de Canal</label>
-                  <Select value={messageType} onValueChange={(value: 'email' | 'whatsapp' | 'both') => setMessageType(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="email">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4" />
-                          Email
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="whatsapp">
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4" />
-                          WhatsApp
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="both">
-                        <div className="flex items-center gap-2">
-                          <Send className="h-4 w-4" />
-                          Ambos
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Tipo de Campanha</label>
-                  <Select value={campaignType} onValueChange={handleCampaignTypeChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="promocional">Promocional</SelectItem>
-                      <SelectItem value="lembrete">Lembrete</SelectItem>
-                      <SelectItem value="personalizada">Personalizada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {messageType !== 'whatsapp' && (
-                <div>
-                  <label className="text-sm font-medium">Assunto</label>
-                  <input
-                    type="text"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Assunto do email"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="text-sm font-medium">Mensagem</label>
-                <Textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Digite sua mensagem aqui... Use {nome} para personalizar com o nome do cliente"
-                  className="min-h-32"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Dica: Use {`{nome}`} para inserir o nome do cliente automaticamente
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Botão de Envio */}
+      {/* Configuração da campanha */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-600">
-              Enviar para {selectedClients.length} cliente(s) via {
-                messageType === 'both' ? 'Email e WhatsApp' : 
-                messageType === 'email' ? 'Email' : 'WhatsApp'
-              }
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            Nova Campanha
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="channel">Canal de Envio</Label>
+              <Select value={channel} onValueChange={(value: 'email' | 'whatsapp') => setChannel(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o canal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="email">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="whatsapp">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      WhatsApp
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Button
-              onClick={handleSendNotifications}
-              disabled={selectedClients.length === 0 || !message.trim()}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Enviar Mensagens
-            </Button>
+
+            <div>
+              <Label htmlFor="filterTag">Filtrar por Etiqueta</Label>
+              <Select value={filterTag} onValueChange={setFilterTag}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas as etiquetas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as etiquetas</SelectItem>
+                  {allTags.map(tag => (
+                    <SelectItem key={tag.id} value={tag.id}>
+                      {tag.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {channel === 'email' && (
+            <div>
+              <Label htmlFor="subject">Assunto</Label>
+              <Input
+                id="subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Digite o assunto do email"
+              />
+            </div>
+          )}
+
+          <div>
+            <Label htmlFor="message">Mensagem</Label>
+            <Textarea
+              id="message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={`Digite sua mensagem ${channel === 'whatsapp' ? 'do WhatsApp' : 'de email'} aqui...`}
+              rows={4}
+            />
           </div>
         </CardContent>
       </Card>
+
+      {/* Seleção de clientes */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Selecionar Destinatários ({filteredClients.length} clientes)</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={selectAllClients}>
+                Selecionar Todos
+              </Button>
+              <Button variant="outline" size="sm" onClick={clearSelection}>
+                Limpar Seleção
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+            {filteredClients.map(client => (
+              <div
+                key={client.id}
+                className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                  selectedClients.includes(client.id)
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => handleClientSelection(client.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <input
+                    type="checkbox"
+                    checked={selectedClients.includes(client.id)}
+                    onChange={() => handleClientSelection(client.id)}
+                    className="mr-2"
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{client.nome}</p>
+                    <p className="text-xs text-gray-600">
+                      {channel === 'email' ? client.email : client.whatsapp || 'WhatsApp não cadastrado'}
+                    </p>
+                  </div>
+                </div>
+                {clientTags[client.id] && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {clientTags[client.id].map(tag => (
+                      <Badge key={tag.id} className={`text-xs ${tag.color}`}>
+                        {tag.name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {selectedClients.length > 0 && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700">
+                {selectedClients.length} cliente(s) selecionado(s) para receber a mensagem via {channel === 'email' ? 'email' : 'WhatsApp'}.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Botão de envio */}
+      <div className="flex justify-end">
+        <Button
+          onClick={sendNotifications}
+          disabled={sending || selectedClients.length === 0}
+          className="bg-purple-600 hover:bg-purple-700"
+          size="lg"
+        >
+          {sending ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Enviando...
+            </>
+          ) : (
+            <>
+              <Send className="mr-2 h-5 w-5" />
+              Enviar {channel === 'email' ? 'Emails' : 'WhatsApp'} ({selectedClients.length})
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 };

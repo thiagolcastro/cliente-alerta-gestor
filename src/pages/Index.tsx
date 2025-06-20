@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Users, Calendar, Mail, TrendingUp, DollarSign, ArrowRight } from 'lucide-react';
+import { Plus, Users, Calendar, Mail, TrendingUp, DollarSign, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,8 +11,10 @@ import StatsCard from '@/components/StatsCard';
 import ClientTags, { ClientTag } from '@/components/ClientTags';
 import FinancialDashboard from '@/components/FinancialDashboard';
 import NotificationPanel from '@/components/NotificationPanel';
+import Auth from '@/components/Auth';
 import { clientService } from '@/services/clientService';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface Client {
   id: string;
@@ -36,6 +38,7 @@ export interface Client {
 
 const Index = () => {
   const { toast } = useToast();
+  const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -52,8 +55,10 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   useEffect(() => {
-    loadClients();
-  }, []);
+    if (isAuthenticated) {
+      loadClients();
+    }
+  }, [isAuthenticated]);
 
   const loadClients = async () => {
     try {
@@ -68,6 +73,22 @@ const Index = () => {
       console.error('Erro ao carregar clientes:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast({
+        title: "Erro ao sair",
+        description: "Houve um problema ao fazer logout.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
     }
   };
 
@@ -192,6 +213,23 @@ const Index = () => {
     }
   };
 
+  // If still loading auth state, show loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, show login form
+  if (!isAuthenticated) {
+    return <Auth onAuthSuccess={() => window.location.reload()} />;
+  }
+
   const totalClients = clients.length;
   const clientsThisMonth = clients.filter(client => {
     const clientDate = new Date(client.createdAt);
@@ -235,25 +273,32 @@ const Index = () => {
               Gerenciador de Clientes
             </h1>
             <p className="text-gray-600 mt-2">Gerencie seus clientes, automatize comunicações e controle cobranças</p>
+            {user && (
+              <p className="text-sm text-gray-500 mt-1">Bem-vindo, {user.email}</p>
+            )}
+          </div>
+          <div className="flex gap-4 mt-4 md:mt-0">
             <Button 
-              variant="link" 
-              onClick={() => window.open('/', '_blank')}
-              className="text-rose-600 hover:text-rose-700 p-0 h-auto mt-2"
+              onClick={() => {
+                setEditingClient(null);
+                setShowForm(true);
+              }}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transform hover:scale-105 transition-all duration-200"
+              size="lg"
             >
-              Ver Landing Page <ArrowRight className="ml-1 h-4 w-4" />
+              <Plus className="mr-2 h-5 w-5" />
+              Novo Cliente
+            </Button>
+            <Button 
+              onClick={handleSignOut}
+              variant="outline"
+              size="lg"
+              className="border-red-300 text-red-600 hover:bg-red-50"
+            >
+              <LogOut className="mr-2 h-5 w-5" />
+              Sair
             </Button>
           </div>
-          <Button 
-            onClick={() => {
-              setEditingClient(null);
-              setShowForm(true);
-            }}
-            className="mt-4 md:mt-0 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transform hover:scale-105 transition-all duration-200"
-            size="lg"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Novo Cliente
-          </Button>
         </div>
 
         {/* Stats Cards */}
