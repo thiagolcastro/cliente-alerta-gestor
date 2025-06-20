@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Plus, Users, Calendar, Mail, TrendingUp, DollarSign } from 'lucide-react';
+import { Plus, Users, Calendar, Mail, TrendingUp, DollarSign, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +9,9 @@ import ClientList from '@/components/ClientList';
 import AutomationPanel from '@/components/AutomationPanel';
 import BillingPanel from '@/components/BillingPanel';
 import StatsCard from '@/components/StatsCard';
+import ClientTags, { ClientTag } from '@/components/ClientTags';
+import FinancialDashboard from '@/components/FinancialDashboard';
+import NotificationPanel from '@/components/NotificationPanel';
 import { clientService } from '@/services/clientService';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,6 +42,14 @@ const Index = () => {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [inactiveMonths, setInactiveMonths] = useState(3);
+  const [clientTags, setClientTags] = useState<{ [clientId: string]: ClientTag[] }>({});
+  const [availableTags, setAvailableTags] = useState<ClientTag[]>([
+    { id: '1', name: 'VIP', color: 'bg-purple-100 text-purple-800' },
+    { id: '2', name: 'Atrasado', color: 'bg-red-100 text-red-800' },
+    { id: '3', name: 'Em negociação', color: 'bg-yellow-100 text-yellow-800' },
+    { id: '4', name: 'Cliente novo', color: 'bg-green-100 text-green-800' }
+  ]);
+  const [activeView, setActiveView] = useState<string>('dashboard');
 
   useEffect(() => {
     loadClients();
@@ -63,7 +74,6 @@ const Index = () => {
   const addClient = async (clientData: Omit<Client, 'id' | 'createdAt'>) => {
     try {
       if (editingClient) {
-        // Atualizar cliente existente
         const updatedClient = await clientService.updateClient(editingClient.id, clientData);
         setClients(clients.map(client => 
           client.id === editingClient.id ? updatedClient : client
@@ -74,7 +84,6 @@ const Index = () => {
         });
         setEditingClient(null);
       } else {
-        // Criar novo cliente
         const newClient = await clientService.createClient(clientData);
         setClients([newClient, ...clients]);
         toast({
@@ -114,6 +123,72 @@ const Index = () => {
   const editClient = (client: Client) => {
     setEditingClient(client);
     setShowForm(true);
+  };
+
+  const handleAddTag = (clientId: string, tag: ClientTag) => {
+    setClientTags(prev => ({
+      ...prev,
+      [clientId]: [...(prev[clientId] || []), tag]
+    }));
+  };
+
+  const handleRemoveTag = (clientId: string, tagId: string) => {
+    setClientTags(prev => ({
+      ...prev,
+      [clientId]: (prev[clientId] || []).filter(tag => tag.id !== tagId)
+    }));
+  };
+
+  const handleCreateTag = (newTag: Omit<ClientTag, 'id'>) => {
+    const tag: ClientTag = {
+      ...newTag,
+      id: Date.now().toString()
+    };
+    setAvailableTags(prev => [...prev, tag]);
+  };
+
+  const handleStatsCardClick = (type: string) => {
+    switch (type) {
+      case 'inactive':
+        setActiveView('clientes-inativos');
+        break;
+      case 'birthdays':
+        setActiveView('aniversarios');
+        break;
+      case 'new':
+        setActiveView('clientes-novos');
+        break;
+      default:
+        setActiveView('clientes');
+    }
+  };
+
+  const getFilteredClients = () => {
+    switch (activeView) {
+      case 'clientes-inativos':
+        return clients.filter(client => {
+          if (!client.ultimaCompra) return true;
+          const lastPurchase = new Date(client.ultimaCompra);
+          const thresholdDate = new Date();
+          thresholdDate.setMonth(thresholdDate.getMonth() - inactiveMonths);
+          return lastPurchase < thresholdDate;
+        });
+      case 'aniversarios':
+        return clients.filter(client => {
+          if (!client.dataNascimento) return false;
+          const birthday = new Date(client.dataNascimento);
+          const now = new Date();
+          return birthday.getMonth() === now.getMonth();
+        });
+      case 'clientes-novos':
+        return clients.filter(client => {
+          const clientDate = new Date(client.createdAt);
+          const now = new Date();
+          return clientDate.getMonth() === now.getMonth() && clientDate.getFullYear() === now.getFullYear();
+        });
+      default:
+        return clients;
+    }
   };
 
   const totalClients = clients.length;
@@ -159,6 +234,13 @@ const Index = () => {
               Gerenciador de Clientes
             </h1>
             <p className="text-gray-600 mt-2">Gerencie seus clientes, automatize comunicações e controle cobranças</p>
+            <Button 
+              variant="link" 
+              onClick={() => window.open('/', '_blank')}
+              className="text-rose-600 hover:text-rose-700 p-0 h-auto mt-2"
+            >
+              Ver Landing Page <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
           </div>
           <Button 
             onClick={() => {
@@ -175,63 +257,157 @@ const Index = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatsCard
-            title="Total de Clientes"
-            value={totalClients}
-            icon={Users}
-            color="from-blue-500 to-cyan-500"
-          />
-          <StatsCard
-            title="Novos este Mês"
-            value={clientsThisMonth}
-            icon={TrendingUp}
-            color="from-green-500 to-emerald-500"
-          />
-          <StatsCard
-            title="Aniversários este Mês"
-            value={birthdaysThisMonth}
-            icon={Calendar}
-            color="from-purple-500 to-pink-500"
-          />
-          <StatsCard
-            title="Clientes Inativos"
-            value={inactiveClients}
-            icon={Mail}
-            color="from-orange-500 to-red-500"
-          />
+          <div onClick={() => handleStatsCardClick('total')} className="cursor-pointer">
+            <StatsCard
+              title="Total de Clientes"
+              value={totalClients}
+              icon={Users}
+              color="from-blue-500 to-cyan-500"
+            />
+          </div>
+          <div onClick={() => handleStatsCardClick('new')} className="cursor-pointer">
+            <StatsCard
+              title="Novos este Mês"
+              value={clientsThisMonth}
+              icon={TrendingUp}
+              color="from-green-500 to-emerald-500"
+            />
+          </div>
+          <div onClick={() => handleStatsCardClick('birthdays')} className="cursor-pointer">
+            <StatsCard
+              title="Aniversários este Mês"
+              value={birthdaysThisMonth}
+              icon={Calendar}
+              color="from-purple-500 to-pink-500"
+            />
+          </div>
+          <div onClick={() => handleStatsCardClick('inactive')} className="cursor-pointer">
+            <StatsCard
+              title="Clientes Inativos"
+              value={inactiveClients}
+              icon={Mail}
+              color="from-orange-500 to-red-500"
+            />
+          </div>
         </div>
 
         {/* Main Content with Tabs */}
-        <Tabs defaultValue="clientes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="dashboard" className="space-y-6" onValueChange={setActiveView}>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
             <TabsTrigger value="clientes" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Clientes
+            </TabsTrigger>
+            <TabsTrigger value="financeiro" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Financeiro
             </TabsTrigger>
             <TabsTrigger value="automacao" className="flex items-center gap-2">
               <Mail className="h-4 w-4" />
               Automação
             </TabsTrigger>
-            <TabsTrigger value="cobrancas" className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Cobranças
+            <TabsTrigger value="notificacoes" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Campanhas
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="dashboard">
+            <Card className="shadow-xl border-0 bg-white/70 backdrop-blur-sm">
+              <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-t-lg">
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="mr-2 h-5 w-5" />
+                  Dashboard Financeiro
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <FinancialDashboard clients={clients} clientTags={clientTags} />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="clientes">
             <Card className="shadow-xl border-0 bg-white/70 backdrop-blur-sm">
               <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-t-lg">
-                <CardTitle className="flex items-center">
-                  <Users className="mr-2 h-5 w-5" />
-                  Lista de Clientes
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Users className="mr-2 h-5 w-5" />
+                    {activeView === 'clientes-inativos' ? 'Clientes Inativos' :
+                     activeView === 'aniversarios' ? 'Aniversários este Mês' :
+                     activeView === 'clientes-novos' ? 'Clientes Novos' : 'Lista de Clientes'}
+                    <span className="ml-2 text-sm bg-white/20 px-2 py-1 rounded">
+                      {getFilteredClients().length}
+                    </span>
+                  </div>
+                  {activeView !== 'clientes' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setActiveView('clientes')}
+                      className="text-white hover:bg-white/20"
+                    >
+                      Ver Todos
+                    </Button>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <ClientList 
-                  clients={clients} 
-                  onDeleteClient={deleteClient}
-                  onEditClient={editClient}
-                />
+                <div className="space-y-4">
+                  {getFilteredClients().map(client => (
+                    <div key={client.id} className="p-4 border rounded-lg">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">{client.nome}</h3>
+                          <p className="text-gray-600">{client.email}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => editClient(client)}
+                            className="text-blue-500 hover:text-blue-700"
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteClient(client.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            Excluir
+                          </Button>
+                        </div>
+                      </div>
+                      <ClientTags
+                        clientId={client.id}
+                        tags={clientTags[client.id] || []}
+                        availableTags={availableTags}
+                        onAddTag={handleAddTag}
+                        onRemoveTag={handleRemoveTag}
+                        onCreateTag={handleCreateTag}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="financeiro">
+            <Card className="shadow-xl border-0 bg-white/70 backdrop-blur-sm">
+              <CardHeader className="bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-t-lg">
+                <CardTitle className="flex items-center">
+                  <DollarSign className="mr-2 h-5 w-5" />
+                  Painel Financeiro
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <FinancialDashboard clients={clients} clientTags={clientTags} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -245,21 +421,21 @@ const Index = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <AutomationPanel clients={clients} />
+                <AutomationPanel clients={clients} inactiveMonths={inactiveMonths} setInactiveMonths={set InactiveMonths} />
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="cobrancas">
+          <TabsContent value="notificacoes">
             <Card className="shadow-xl border-0 bg-white/70 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-t-lg">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
                 <CardTitle className="flex items-center">
-                  <DollarSign className="mr-2 h-5 w-5" />
-                  Gestão de Cobranças
+                  <Mail className="mr-2 h-5 w-5" />
+                  Notificações e Campanhas
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <BillingPanel clients={clients} />
+                <NotificationPanel clients={clients} clientTags={clientTags} />
               </CardContent>
             </Card>
           </TabsContent>

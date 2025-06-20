@@ -1,251 +1,266 @@
 
 import { useState } from 'react';
-import { Send, Calendar, Mail as MailIcon, Gift, Settings } from 'lucide-react';
+import { Send, Calendar, Users, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { emailService } from '@/services/emailService';
 import { useToast } from '@/hooks/use-toast';
 import { Client } from '@/pages/Index';
-import { emailService } from '@/services/emailService';
 
 interface AutomationPanelProps {
   clients: Client[];
+  inactiveMonths: number;
+  setInactiveMonths: (months: number) => void;
 }
 
-const AutomationPanel = ({ clients }: AutomationPanelProps) => {
+const AutomationPanel = ({ clients, inactiveMonths, setInactiveMonths }: AutomationPanelProps) => {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState({
-    birthday: false,
-    promotion: false,
-    inactive: false
-  });
-  
-  const [inactiveMonths, setInactiveMonths] = useState(3);
-  
   const [birthdayMessage, setBirthdayMessage] = useState(
-    "🎉 Parabéns pelo seu aniversário! Desejamos muito sucesso e felicidades. Aproveite nosso desconto especial de 15% válido até o final do mês!"
+    'Parabéns pelo seu aniversário! 🎉 Aproveite nossa promoção especial de aniversário com 15% de desconto em toda nossa coleção de semijoias. Use o código ANIVERSARIO15 em sua próxima compra!'
   );
   const [promotionMessage, setPromotionMessage] = useState(
-    "🎁 Oferta especial só para você! Temos uma promoção imperdível com 20% de desconto em todos os nossos produtos. Válida apenas esta semana!"
+    'Olá! Temos novidades incríveis esperando por você! ✨ Confira nossa nova coleção de semijoias com peças exclusivas e promoções especiais. Não perca!'
   );
   const [inactiveMessage, setInactiveMessage] = useState(
-    "Sentimos sua falta! 💙 Que tal dar uma olhadinha nas nossas novidades? Preparamos um desconto especial de 10% para seu retorno!"
+    'Sentimos sua falta! 💎 Há algum tempo você não visita nossa loja. Que tal conferir nossas novidades? Temos peças lindas esperando por você com condições especiais!'
   );
 
-  const getBirthdayClients = () => {
-    const today = new Date();
-    return clients.filter(client => {
-      if (!client.dataNascimento) return false;
-      const birthday = new Date(client.dataNascimento);
-      return birthday.getDate() === today.getDate() && birthday.getMonth() === today.getMonth();
-    });
-  };
+  const [loading, setLoading] = useState<string>('');
 
-  const getBirthdayClientsThisMonth = () => {
-    const today = new Date();
-    return clients.filter(client => {
-      if (!client.dataNascimento) return false;
-      const birthday = new Date(client.dataNascimento);
-      return birthday.getMonth() === today.getMonth();
-    });
-  };
+  const birthdayClients = clients.filter(client => {
+    if (!client.dataNascimento) return false;
+    const birthday = new Date(client.dataNascimento);
+    const now = new Date();
+    return birthday.getMonth() === now.getMonth();
+  });
 
-  const getInactiveClients = () => {
+  const inactiveClients = clients.filter(client => {
+    if (!client.ultimaCompra) return true;
+    const lastPurchase = new Date(client.ultimaCompra);
     const thresholdDate = new Date();
     thresholdDate.setMonth(thresholdDate.getMonth() - inactiveMonths);
-    
-    return clients.filter(client => {
-      if (!client.ultimaCompra) return true;
-      const lastPurchase = new Date(client.ultimaCompra);
-      return lastPurchase < thresholdDate;
-    });
-  };
+    return lastPurchase < thresholdDate;
+  });
 
-  const sendBirthdayMessages = async () => {
-    const birthdayClients = getBirthdayClients();
-    setIsLoading(prev => ({ ...prev, birthday: true }));
-    
+  const handleSendBirthdayEmails = async () => {
+    if (birthdayClients.length === 0) {
+      toast({
+        title: "Nenhum aniversariante",
+        description: "Não há clientes aniversariantes este mês.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading('birthday');
     try {
       await emailService.sendBirthdayEmails(birthdayClients, birthdayMessage);
       toast({
-        title: "Emails de Aniversário Enviados!",
-        description: `${birthdayClients.length} email(s) de aniversário enviado(s) com sucesso!`,
+        title: "Emails de aniversário enviados!",
+        description: `${birthdayClients.length} email(s) enviado(s) com sucesso.`,
       });
     } catch (error) {
       toast({
-        title: "Erro ao Enviar Emails",
+        title: "Erro ao enviar emails",
         description: "Houve um problema ao enviar os emails de aniversário.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(prev => ({ ...prev, birthday: false }));
+      setLoading('');
     }
   };
 
-  const sendPromotionMessages = async () => {
-    setIsLoading(prev => ({ ...prev, promotion: true }));
-    
+  const handleSendPromotionEmails = async () => {
+    if (clients.length === 0) {
+      toast({
+        title: "Nenhum cliente",
+        description: "Não há clientes cadastrados.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading('promotion');
     try {
       await emailService.sendPromotionEmails(clients, promotionMessage);
       toast({
-        title: "Emails Promocionais Enviados!",
-        description: `Email promocional enviado para ${clients.length} cliente(s)!`,
+        title: "Emails promocionais enviados!",
+        description: `${clients.length} email(s) enviado(s) com sucesso.`,
       });
     } catch (error) {
       toast({
-        title: "Erro ao Enviar Emails",
+        title: "Erro ao enviar emails",
         description: "Houve um problema ao enviar os emails promocionais.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(prev => ({ ...prev, promotion: false }));
+      setLoading('');
     }
   };
 
-  const sendInactiveMessages = async () => {
-    const inactiveClients = getInactiveClients();
-    setIsLoading(prev => ({ ...prev, inactive: true }));
-    
+  const handleSendInactiveEmails = async () => {
+    if (inactiveClients.length === 0) {
+      toast({
+        title: "Nenhum cliente inativo",
+        description: `Não há clientes inativos há mais de ${inactiveMonths} meses.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading('inactive');
     try {
       await emailService.sendInactiveEmails(inactiveClients, inactiveMessage);
       toast({
-        title: "Emails para Inativos Enviados!",
-        description: `${inactiveClients.length} email(s) enviado(s) para clientes inativos!`,
+        title: "Emails para inativos enviados!",
+        description: `${inactiveClients.length} email(s) enviado(s) com sucesso.`,
       });
     } catch (error) {
       toast({
-        title: "Erro ao Enviar Emails",
+        title: "Erro ao enviar emails",
         description: "Houve um problema ao enviar os emails para clientes inativos.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(prev => ({ ...prev, inactive: false }));
+      setLoading('');
     }
   };
 
-  const todayBirthdays = getBirthdayClients();
-  const monthBirthdays = getBirthdayClientsThisMonth();
-  const inactiveClients = getInactiveClients();
-
   return (
-    <div className="space-y-4">
-      {/* Birthday Messages */}
-      <Card className="border-purple-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center text-purple-700">
-            <Calendar className="mr-2 h-4 w-4" />
-            Aniversários
+    <div className="space-y-6">
+      {/* Configuração de Período de Inatividade */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <AlertCircle className="mr-2 h-5 w-5" />
+            Configurações
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <div className="text-sm text-gray-600">
-              <p><strong>Hoje:</strong> {todayBirthdays.length} cliente(s)</p>
-              <p><strong>Este mês:</strong> {monthBirthdays.length} cliente(s)</p>
-            </div>
-            <Textarea
-              value={birthdayMessage}
-              onChange={(e) => setBirthdayMessage(e.target.value)}
-              rows={3}
-              className="text-sm"
-            />
-            <Button
-              onClick={sendBirthdayMessages}
-              disabled={todayBirthdays.length === 0 || isLoading.birthday}
-              className="w-full bg-purple-600 hover:bg-purple-700"
-              size="sm"
-            >
-              <Send className="mr-2 h-3 w-3" />
-              {isLoading.birthday ? 'Enviando...' : 'Enviar para Aniversariantes'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Promotion Messages */}
-      <Card className="border-green-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center text-green-700">
-            <Gift className="mr-2 h-4 w-4" />
-            Promoções
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="text-sm text-gray-600">
-              <p><strong>Total de clientes:</strong> {clients.length}</p>
-            </div>
-            <Textarea
-              value={promotionMessage}
-              onChange={(e) => setPromotionMessage(e.target.value)}
-              rows={3}
-              className="text-sm"
-            />
-            <Button
-              onClick={sendPromotionMessages}
-              disabled={clients.length === 0 || isLoading.promotion}
-              className="w-full bg-green-600 hover:bg-green-700"
-              size="sm"
-            >
-              <Send className="mr-2 h-3 w-3" />
-              {isLoading.promotion ? 'Enviando...' : 'Enviar Promoção'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Inactive Client Messages */}
-      <Card className="border-orange-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center text-orange-700">
-            <Settings className="mr-2 h-4 w-4" />
-            Clientes Inativos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="inactiveMonths" className="text-sm">
-                Considerar inativo após:
-              </Label>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="inactive-months">Considerar cliente inativo após (meses):</Label>
               <Input
-                id="inactiveMonths"
+                id="inactive-months"
                 type="number"
                 min="1"
                 max="12"
                 value={inactiveMonths}
-                onChange={(e) => setInactiveMonths(parseInt(e.target.value) || 3)}
-                className="w-20 h-8"
+                onChange={(e) => setInactiveMonths(Number(e.target.value))}
+                className="w-32"
               />
-              <span className="text-sm text-gray-600">meses</span>
+              <p className="text-sm text-gray-600 mt-1">
+                Clientes serão considerados inativos se não compraram há {inactiveMonths} meses ou mais
+              </p>
             </div>
-            <div className="text-sm text-gray-600">
-              <p><strong>Inativos ({inactiveMonths}+ meses):</strong> {inactiveClients.length} cliente(s)</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Emails de aniversário */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Calendar className="mr-2 h-5 w-5" />
+              Emails de Aniversário
             </div>
+            <span className="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded">
+              {birthdayClients.length} aniversariante(s)
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
             <Textarea
-              value={inactiveMessage}
-              onChange={(e) => setInactiveMessage(e.target.value)}
-              rows={3}
-              className="text-sm"
+              placeholder="Mensagem para aniversariantes"
+              value={birthdayMessage}
+              onChange={(e) => setBirthdayMessage(e.target.value)}
+              className="min-h-24"
             />
             <Button
-              onClick={sendInactiveMessages}
-              disabled={inactiveClients.length === 0 || isLoading.inactive}
-              className="w-full bg-orange-600 hover:bg-orange-700"
-              size="sm"
+              onClick={handleSendBirthdayEmails}
+              disabled={loading === 'birthday' || birthdayClients.length === 0}
+              className="w-full"
             >
-              <Send className="mr-2 h-3 w-3" />
-              {isLoading.inactive ? 'Enviando...' : 'Reativar Clientes'}
+              <Send className="mr-2 h-4 w-4" />
+              {loading === 'birthday' ? 'Enviando...' : `Enviar para ${birthdayClients.length} aniversariante(s)`}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <div className="text-xs text-gray-500 text-center pt-2">
-        📧 Emails reais serão enviados via Supabase Edge Functions
-      </div>
+      {/* Emails promocionais */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Users className="mr-2 h-5 w-5" />
+              Emails Promocionais
+            </div>
+            <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
+              {clients.length} cliente(s)
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Mensagem promocional"
+              value={promotionMessage}
+              onChange={(e) => setPromotionMessage(e.target.value)}
+              className="min-h-24"
+            />
+            <Button
+              onClick={handleSendPromotionEmails}
+              disabled={loading === 'promotion' || clients.length === 0}
+              className="w-full bg-green-600 hover:bg-green-700"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {loading === 'promotion' ? 'Enviando...' : `Enviar para todos os ${clients.length} cliente(s)`}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Emails para clientes inativos */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center">
+              <AlertCircle className="mr-2 h-5 w-5" />
+              Clientes Inativos
+            </div>
+            <span className="text-sm bg-orange-100 text-orange-800 px-2 py-1 rounded">
+              {inactiveClients.length} inativo(s)
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Clientes que não fizeram compras há mais de {inactiveMonths} meses
+            </p>
+            <Textarea
+              placeholder="Mensagem para clientes inativos"
+              value={inactiveMessage}
+              onChange={(e) => setInactiveMessage(e.target.value)}
+              className="min-h-24"
+            />
+            <Button
+              onClick={handleSendInactiveEmails}
+              disabled={loading === 'inactive' || inactiveClients.length === 0}
+              className="w-full bg-orange-600 hover:bg-orange-700"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {loading === 'inactive' ? 'Enviando...' : `Enviar para ${inactiveClients.length} cliente(s) inativo(s)`}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
