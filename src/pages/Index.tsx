@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Plus, Users, Calendar, Mail, TrendingUp, DollarSign, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,6 +49,7 @@ const Index = () => {
     { id: '4', name: 'Cliente novo', color: 'bg-green-100 text-green-800' }
   ]);
   const [activeView, setActiveView] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   useEffect(() => {
     loadClients();
@@ -148,6 +148,7 @@ const Index = () => {
   };
 
   const handleStatsCardClick = (type: string) => {
+    setActiveTab('clientes');
     switch (type) {
       case 'inactive':
         setActiveView('clientes-inativos');
@@ -292,7 +293,7 @@ const Index = () => {
         </div>
 
         {/* Main Content with Tabs */}
-        <Tabs defaultValue="dashboard" className="space-y-6" onValueChange={setActiveView}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />

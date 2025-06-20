@@ -210,11 +210,12 @@ const FinancialDashboard = ({ clients, clientTags }: FinancialDashboardProps) =>
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0];
+                      const value = typeof data.value === 'number' ? data.value : 0;
                       return (
                         <div className="bg-white p-2 border rounded shadow">
                           <p className="font-medium">{data.payload.name}</p>
                           <p className="text-sm">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(data.value)}
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)}
                           </p>
                         </div>
                       );
