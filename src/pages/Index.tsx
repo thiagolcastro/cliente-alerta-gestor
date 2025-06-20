@@ -421,7 +421,7 @@ const Index = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <AutomationPanel clients={clients} inactiveMonths={inactiveMonths} setInactiveMonths={set InactiveMonths} />
+                <AutomationPanel clients={clients} inactiveMonths={inactiveMonths} setInactiveMonths={setInactiveMonths} />
               </CardContent>
             </Card>
           </TabsContent>
