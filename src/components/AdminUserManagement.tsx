@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,12 @@ const AdminUserManagement = () => {
     try {
       setLoading(true);
       const data = await adminService.getAllAdminUsers();
-      setAdminUsers(data);
+      // Ensure all users have valid roles
+      const sanitizedData = data.map(user => ({
+        ...user,
+        role: (user.role && ['admin', 'manager', 'viewer'].includes(user.role)) ? user.role : 'viewer'
+      }));
+      setAdminUsers(sanitizedData);
     } catch (error) {
       console.error('Error loading admin users:', error);
       toast({
@@ -52,7 +58,7 @@ const AdminUserManagement = () => {
   const handleSaveUser = async () => {
     try {
       // Ensure role is valid
-      if (!userForm.role) {
+      if (!userForm.role || !['admin', 'manager', 'viewer'].includes(userForm.role)) {
         toast({
           title: "Erro",
           description: "Por favor, selecione uma função válida",
@@ -122,9 +128,11 @@ const AdminUserManagement = () => {
   const openDialog = (user?: AdminUser) => {
     if (user) {
       setSelectedUser(user);
+      // Ensure the role is valid before setting it
+      const validRole = (user.role && ['admin', 'manager', 'viewer'].includes(user.role)) ? user.role : 'viewer';
       setUserForm({
         email: user.user?.email || '',
-        role: user.role || 'viewer',
+        role: validRole,
         is_active: user.is_active
       });
     } else {
