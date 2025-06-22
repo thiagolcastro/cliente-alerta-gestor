@@ -28,10 +28,11 @@ export const adminService = {
       throw error;
     }
     
-    return data?.map(admin => ({
+    return (data?.map(admin => ({
       ...admin,
+      role: admin.role as 'admin' | 'manager' | 'viewer',
       user: admin.profiles
-    })) || [];
+    })) || []) as AdminUser[];
   },
 
   async createAdminUser(userId: string, role: 'admin' | 'manager' | 'viewer'): Promise<AdminUser> {
@@ -50,7 +51,10 @@ export const adminService = {
       throw error;
     }
     
-    return data;
+    return {
+      ...data,
+      role: data.role as 'admin' | 'manager' | 'viewer'
+    } as AdminUser;
   },
 
   async updateAdminUser(id: string, updates: Partial<AdminUser>): Promise<AdminUser> {
@@ -70,7 +74,10 @@ export const adminService = {
       throw error;
     }
     
-    return data;
+    return {
+      ...data,
+      role: data.role as 'admin' | 'manager' | 'viewer'
+    } as AdminUser;
   },
 
   async deleteAdminUser(id: string): Promise<void> {

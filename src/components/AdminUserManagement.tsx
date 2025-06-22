@@ -17,7 +17,7 @@ const AdminUserManagement = () => {
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { toast } =eToast();
+  const { toast } = useToast();
 
   const [userForm, setUserForm] = useState({
     email: '',
