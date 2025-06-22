@@ -15,24 +15,40 @@ export interface AdminUser {
 
 export const adminService = {
   async getAllAdminUsers(): Promise<AdminUser[]> {
-    const { data, error } = await supabase
+    // First get the admin users
+    const { data: adminData, error: adminError } = await supabase
       .from('admin_users')
-      .select(`
-        *,
-        profiles!inner(email, name)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
     
-    if (error) {
-      console.error('Erro ao buscar usuários admin:', error);
-      throw error;
+    if (adminError) {
+      console.error('Erro ao buscar usuários admin:', adminError);
+      throw adminError;
     }
-    
-    return (data?.map(admin => ({
+
+    if (!adminData || adminData.length === 0) {
+      return [];
+    }
+
+    // Get user details from auth.users (which populates profiles automatically)
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('id, email, name')
+      .in('id', adminData.map(admin => admin.id));
+
+    if (userError) {
+      console.error('Erro ao buscar perfis:', userError);
+      // Continue without user data if profiles query fails
+    }
+
+    // Combine the data
+    const result = adminData.map(admin => ({
       ...admin,
       role: admin.role as 'admin' | 'manager' | 'viewer',
-      user: admin.profiles
-    })) || []) as AdminUser[];
+      user: userData?.find(user => user.id === admin.id) || undefined
+    }));
+
+    return result as AdminUser[];
   },
 
   async createAdminUser(userId: string, role: 'admin' | 'manager' | 'viewer'): Promise<AdminUser> {

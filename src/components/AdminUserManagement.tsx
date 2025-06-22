@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -237,7 +236,7 @@ const AdminUserManagement = () => {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-semibold">{user.user?.email}</h3>
+                      <h3 className="font-semibold">{user.user?.email || 'Email não disponível'}</h3>
                       <Badge className={getRoleColor(user.role)}>
                         {getRoleLabel(user.role)}
                       </Badge>
