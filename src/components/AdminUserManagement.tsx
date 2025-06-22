@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,9 +18,13 @@ const AdminUserManagement = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const [userForm, setUserForm] = useState({
+  const [userForm, setUserForm] = useState<{
+    email: string;
+    role: 'admin' | 'manager' | 'viewer';
+    is_active: boolean;
+  }>({
     email: '',
-    role: 'viewer' as 'admin' | 'manager' | 'viewer',
+    role: 'viewer',
     is_active: true
   });
 
@@ -48,8 +51,8 @@ const AdminUserManagement = () => {
 
   const handleSaveUser = async () => {
     try {
-      // Ensure role is not empty
-      if (!userForm.role || userForm.role === '') {
+      // Ensure role is valid
+      if (!userForm.role) {
         toast({
           title: "Erro",
           description: "Por favor, selecione uma função válida",
@@ -110,7 +113,7 @@ const AdminUserManagement = () => {
   const resetForm = () => {
     setUserForm({
       email: '',
-      role: 'viewer', // Always set to a valid default
+      role: 'viewer',
       is_active: true
     });
     setSelectedUser(null);
@@ -121,7 +124,7 @@ const AdminUserManagement = () => {
       setSelectedUser(user);
       setUserForm({
         email: user.user?.email || '',
-        role: user.role || 'viewer', // Ensure role is never empty
+        role: user.role || 'viewer',
         is_active: user.is_active
       });
     } else {
