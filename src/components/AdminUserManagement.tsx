@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,11 +29,20 @@ const AdminUserManagement = () => {
     is_active: true
   });
 
-  // Helper function to ensure role is always valid
+  // Helper function to ensure role is always valid - mais rigoroso
   const validateRole = (role: any): 'admin' | 'manager' | 'viewer' => {
-    if (role && typeof role === 'string' && ['admin', 'manager', 'viewer'].includes(role)) {
-      return role as 'admin' | 'manager' | 'viewer';
+    // Se for null, undefined, string vazia ou não for string, retorna 'viewer'
+    if (!role || typeof role !== 'string' || role.trim() === '') {
+      return 'viewer';
     }
+    
+    const validRoles = ['admin', 'manager', 'viewer'] as const;
+    const trimmedRole = role.trim().toLowerCase();
+    
+    if (validRoles.includes(trimmedRole as any)) {
+      return trimmedRole as 'admin' | 'manager' | 'viewer';
+    }
+    
     return 'viewer';
   };
 
@@ -46,17 +54,21 @@ const AdminUserManagement = () => {
     try {
       setLoading(true);
       const data = await adminService.getAllAdminUsers();
-      // Ensure all users have valid roles - filter out any invalid entries
-      const sanitizedData = data
-        .filter(user => user && user.id) // Filter out null/undefined users
+      
+      // Filtrar e sanitizar dados mais rigorosamente
+      const sanitizedData = (data || [])
+        .filter(user => user && user.id && typeof user.id === 'string')
         .map(user => ({
           ...user,
-          role: validateRole(user.role)
+          role: validateRole(user.role),
+          user: user.user || { email: 'Email não disponível' }
         }));
+      
       console.log('Loaded admin users:', sanitizedData);
       setAdminUsers(sanitizedData);
     } catch (error) {
       console.error('Error loading admin users:', error);
+      setAdminUsers([]); // Garantir que sempre seja um array
       toast({
         title: "Erro",
         description: "Erro ao carregar usuários administrativos",
@@ -69,7 +81,6 @@ const AdminUserManagement = () => {
 
   const handleSaveUser = async () => {
     try {
-      // Validate role before saving
       const validatedRole = validateRole(userForm.role);
       
       if (selectedUser) {
@@ -82,7 +93,6 @@ const AdminUserManagement = () => {
           description: "Usuário atualizado com sucesso"
         });
       } else {
-        // Para criar um novo usuário admin, precisamos primeiro que ele se registre
         toast({
           title: "Informação",
           description: "Para adicionar um novo usuário admin, ele deve primeiro se registrar no sistema"
@@ -124,7 +134,7 @@ const AdminUserManagement = () => {
   const resetForm = () => {
     setUserForm({
       email: '',
-      role: 'viewer',
+      role: 'viewer', // Sempre começar com um valor válido
       is_active: true
     });
     setSelectedUser(null);
@@ -218,10 +228,11 @@ const AdminUserManagement = () => {
               <div>
                 <Label htmlFor="role">Função</Label>
                 <Select 
-                  value={validateRole(userForm.role)} 
+                  value={userForm.role || 'viewer'} 
                   onValueChange={(value: string) => {
                     console.log('Role changed to:', value);
                     const validatedRole = validateRole(value);
+                    console.log('Validated role:', validatedRole);
                     setUserForm({...userForm, role: validatedRole});
                   }}
                 >
@@ -339,4 +350,3 @@ const AdminUserManagement = () => {
 };
 
 export default AdminUserManagement;
-
