@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -130,6 +131,7 @@ const AdminUserManagement = () => {
       setSelectedUser(user);
       // Ensure the role is valid before setting it
       const validRole = (user.role && ['admin', 'manager', 'viewer'].includes(user.role)) ? user.role : 'viewer';
+      console.log('Opening dialog with user role:', user.role, 'validated role:', validRole);
       setUserForm({
         email: user.user?.email || '',
         role: validRole,
@@ -211,10 +213,12 @@ const AdminUserManagement = () => {
               <div>
                 <Label htmlFor="role">Função</Label>
                 <Select 
-                  value={userForm.role} 
+                  value={userForm.role || 'viewer'} 
                   onValueChange={(value: 'admin' | 'manager' | 'viewer') => {
                     console.log('Role changed to:', value);
-                    setUserForm({...userForm, role: value});
+                    if (value && ['admin', 'manager', 'viewer'].includes(value)) {
+                      setUserForm({...userForm, role: value});
+                    }
                   }}
                 >
                   <SelectTrigger>
@@ -331,3 +335,4 @@ const AdminUserManagement = () => {
 };
 
 export default AdminUserManagement;
+
