@@ -30,6 +30,14 @@ const AdminUserManagement = () => {
     is_active: true
   });
 
+  // Helper function to ensure role is always valid
+  const validateRole = (role: any): 'admin' | 'manager' | 'viewer' => {
+    if (role && typeof role === 'string' && ['admin', 'manager', 'viewer'].includes(role)) {
+      return role as 'admin' | 'manager' | 'viewer';
+    }
+    return 'viewer';
+  };
+
   useEffect(() => {
     loadAdminUsers();
   }, []);
@@ -38,11 +46,14 @@ const AdminUserManagement = () => {
     try {
       setLoading(true);
       const data = await adminService.getAllAdminUsers();
-      // Ensure all users have valid roles
-      const sanitizedData = data.map(user => ({
-        ...user,
-        role: (user.role && ['admin', 'manager', 'viewer'].includes(user.role)) ? user.role : 'viewer'
-      }));
+      // Ensure all users have valid roles - filter out any invalid entries
+      const sanitizedData = data
+        .filter(user => user && user.id) // Filter out null/undefined users
+        .map(user => ({
+          ...user,
+          role: validateRole(user.role)
+        }));
+      console.log('Loaded admin users:', sanitizedData);
       setAdminUsers(sanitizedData);
     } catch (error) {
       console.error('Error loading admin users:', error);
@@ -58,19 +69,12 @@ const AdminUserManagement = () => {
 
   const handleSaveUser = async () => {
     try {
-      // Ensure role is valid
-      if (!userForm.role || !['admin', 'manager', 'viewer'].includes(userForm.role)) {
-        toast({
-          title: "Erro",
-          description: "Por favor, selecione uma função válida",
-          variant: "destructive"
-        });
-        return;
-      }
-
+      // Validate role before saving
+      const validatedRole = validateRole(userForm.role);
+      
       if (selectedUser) {
         await adminService.updateAdminUser(selectedUser.id, {
-          role: userForm.role,
+          role: validatedRole,
           is_active: userForm.is_active
         });
         toast({
@@ -129,8 +133,7 @@ const AdminUserManagement = () => {
   const openDialog = (user?: AdminUser) => {
     if (user) {
       setSelectedUser(user);
-      // Ensure the role is valid before setting it
-      const validRole = (user.role && ['admin', 'manager', 'viewer'].includes(user.role)) ? user.role : 'viewer';
+      const validRole = validateRole(user.role);
       console.log('Opening dialog with user role:', user.role, 'validated role:', validRole);
       setUserForm({
         email: user.user?.email || '',
@@ -144,7 +147,8 @@ const AdminUserManagement = () => {
   };
 
   const getRoleColor = (role: string) => {
-    switch (role) {
+    const validatedRole = validateRole(role);
+    switch (validatedRole) {
       case 'admin':
         return 'bg-red-100 text-red-800';
       case 'manager':
@@ -157,7 +161,8 @@ const AdminUserManagement = () => {
   };
 
   const getRoleLabel = (role: string) => {
-    switch (role) {
+    const validatedRole = validateRole(role);
+    switch (validatedRole) {
       case 'admin':
         return 'Administrador';
       case 'manager':
@@ -165,7 +170,7 @@ const AdminUserManagement = () => {
       case 'viewer':
         return 'Visualizador';
       default:
-        return role;
+        return 'Visualizador';
     }
   };
 
@@ -213,12 +218,11 @@ const AdminUserManagement = () => {
               <div>
                 <Label htmlFor="role">Função</Label>
                 <Select 
-                  value={userForm.role || 'viewer'} 
-                  onValueChange={(value: 'admin' | 'manager' | 'viewer') => {
+                  value={validateRole(userForm.role)} 
+                  onValueChange={(value: string) => {
                     console.log('Role changed to:', value);
-                    if (value && ['admin', 'manager', 'viewer'].includes(value)) {
-                      setUserForm({...userForm, role: value});
-                    }
+                    const validatedRole = validateRole(value);
+                    setUserForm({...userForm, role: validatedRole});
                   }}
                 >
                   <SelectTrigger>
