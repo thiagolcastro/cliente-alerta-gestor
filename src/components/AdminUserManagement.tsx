@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ const AdminUserManagement = () => {
       const data = await adminService.getAllAdminUsers();
       setAdminUsers(data);
     } catch (error) {
+      console.error('Error loading admin users:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar usuários administrativos",
@@ -46,6 +48,16 @@ const AdminUserManagement = () => {
 
   const handleSaveUser = async () => {
     try {
+      // Ensure role is not empty
+      if (!userForm.role || userForm.role === '') {
+        toast({
+          title: "Erro",
+          description: "Por favor, selecione uma função válida",
+          variant: "destructive"
+        });
+        return;
+      }
+
       if (selectedUser) {
         await adminService.updateAdminUser(selectedUser.id, {
           role: userForm.role,
@@ -66,6 +78,7 @@ const AdminUserManagement = () => {
       resetForm();
       loadAdminUsers();
     } catch (error) {
+      console.error('Error saving user:', error);
       toast({
         title: "Erro",
         description: "Erro ao salvar usuário",
@@ -84,6 +97,7 @@ const AdminUserManagement = () => {
         });
         loadAdminUsers();
       } catch (error) {
+        console.error('Error deleting user:', error);
         toast({
           title: "Erro",
           description: "Erro ao remover usuário",
@@ -96,7 +110,7 @@ const AdminUserManagement = () => {
   const resetForm = () => {
     setUserForm({
       email: '',
-      role: 'viewer',
+      role: 'viewer', // Always set to a valid default
       is_active: true
     });
     setSelectedUser(null);
@@ -107,7 +121,7 @@ const AdminUserManagement = () => {
       setSelectedUser(user);
       setUserForm({
         email: user.user?.email || '',
-        role: user.role,
+        role: user.role || 'viewer', // Ensure role is never empty
         is_active: user.is_active
       });
     } else {
@@ -185,11 +199,17 @@ const AdminUserManagement = () => {
               
               <div>
                 <Label htmlFor="role">Função</Label>
-                <Select value={userForm.role} onValueChange={(value: 'admin' | 'manager' | 'viewer') => setUserForm({...userForm, role: value})}>
+                <Select 
+                  value={userForm.role} 
+                  onValueChange={(value: 'admin' | 'manager' | 'viewer') => {
+                    console.log('Role changed to:', value);
+                    setUserForm({...userForm, role: value});
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione uma função" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white z-50">
                     <SelectItem value="admin">Administrador</SelectItem>
                     <SelectItem value="manager">Gerente</SelectItem>
                     <SelectItem value="viewer">Visualizador</SelectItem>
