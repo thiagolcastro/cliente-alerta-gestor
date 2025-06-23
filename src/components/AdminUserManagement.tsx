@@ -4,13 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Edit, Trash2, Users } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { adminService, AdminUser } from '@/services/adminService';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const AdminUserManagement = () => {
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
@@ -29,9 +34,8 @@ const AdminUserManagement = () => {
     is_active: true
   });
 
-  // Helper function to ensure role is always valid - mais rigoroso
+  // Helper function to ensure role is always valid
   const validateRole = (role: any): 'admin' | 'manager' | 'viewer' => {
-    // Se for null, undefined, string vazia ou não for string, retorna 'viewer'
     if (!role || typeof role !== 'string' || role.trim() === '') {
       return 'viewer';
     }
@@ -68,7 +72,7 @@ const AdminUserManagement = () => {
       setAdminUsers(sanitizedData);
     } catch (error) {
       console.error('Error loading admin users:', error);
-      setAdminUsers([]); // Garantir que sempre seja um array
+      setAdminUsers([]);
       toast({
         title: "Erro",
         description: "Erro ao carregar usuários administrativos",
@@ -134,7 +138,7 @@ const AdminUserManagement = () => {
   const resetForm = () => {
     setUserForm({
       email: '',
-      role: 'viewer', // Sempre começar com um valor válido
+      role: 'viewer',
       is_active: true
     });
     setSelectedUser(null);
@@ -184,6 +188,11 @@ const AdminUserManagement = () => {
     }
   };
 
+  const handleRoleChange = (newRole: 'admin' | 'manager' | 'viewer') => {
+    console.log('Role changed to:', newRole);
+    setUserForm({...userForm, role: newRole});
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8">Carregando...</div>;
   }
@@ -227,24 +236,25 @@ const AdminUserManagement = () => {
               
               <div>
                 <Label htmlFor="role">Função</Label>
-                <Select 
-                  value={userForm.role || 'viewer'} 
-                  onValueChange={(value: string) => {
-                    console.log('Role changed to:', value);
-                    const validatedRole = validateRole(value);
-                    console.log('Validated role:', validatedRole);
-                    setUserForm({...userForm, role: validatedRole});
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma função" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white z-50">
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="manager">Gerente</SelectItem>
-                    <SelectItem value="viewer">Visualizador</SelectItem>
-                  </SelectContent>
-                </Select>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      {getRoleLabel(userForm.role)}
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-full bg-white">
+                    <DropdownMenuItem onClick={() => handleRoleChange('admin')}>
+                      Administrador
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleRoleChange('manager')}>
+                      Gerente
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleRoleChange('viewer')}>
+                      Visualizador
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               
               <div className="flex items-center space-x-2">
