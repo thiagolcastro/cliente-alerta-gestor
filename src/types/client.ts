@@ -1,15 +1,20 @@
 
 export interface Client {
   id: string;
-  name: string;
+  nome: string;
   email: string;
-  phone?: string;
-  birthday?: string;
-  address?: string;
-  notes?: string;
-  tags?: string[];
-  last_contact?: string;
-  status: 'active' | 'inactive';
-  created_at: string;
-  updated_at: string;
+  telefone?: string;
+  whatsapp?: string;
+  endereco?: string;
+  bairro?: string;
+  cidade?: string;
+  cep?: string;
+  estado?: string;
+  dataNascimento?: string;
+  profissao?: string;
+  empresa?: string;
+  observacoes?: string;
+  ultimaCompra?: string;
+  valorUltimaCompra?: number;
+  createdAt: string;
 }
