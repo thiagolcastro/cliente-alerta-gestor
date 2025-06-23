@@ -243,7 +243,7 @@ const AdminUserManagement = () => {
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-full bg-white">
+                  <DropdownMenuContent className="w-full bg-white z-50">
                     <DropdownMenuItem onClick={() => handleRoleChange('admin')}>
                       Administrador
                     </DropdownMenuItem>
