@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Send, MessageSquare, Mail } from 'lucide-react';
-import { Client } from '@/pages/Index';
+import { Client } from '@/types/client';
 import { ClientTag } from './ClientTags';
 import { supabase } from '@/integrations/supabase/client';
 

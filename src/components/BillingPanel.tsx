@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { DollarSign, Send, Clock, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Client } from '@/pages/Index';
+import { Client } from '@/types/client';
 
 interface BillingItem {
   id: string;

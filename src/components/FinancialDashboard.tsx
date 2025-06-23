@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { DollarSign, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
-import { Client } from '@/pages/Index';
+import { Client } from '@/types/client';
 import { ClientTag } from './ClientTags';
 
 interface FinancialDashboardProps {

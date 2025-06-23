@@ -1,10 +1,9 @@
-
 import { useState } from 'react';
 import { Search, Trash2, Phone, Mail as MailIcon, Calendar, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Client } from '@/pages/Index';
+import { Client } from '@/types/client';
 
 interface ClientListProps {
   clients: Client[];

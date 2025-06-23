@@ -1,6 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { Client } from '@/pages/Index';
+import { Client } from '@/types/client';
 
 export const clientService = {
   async getAllClients(): Promise<Client[]> {

@@ -1,6 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { Client } from '@/pages/Index';
+import { Client } from '@/types/client';
 
 export const emailService = {
   async sendBirthdayEmails(clients: Client[], message: string): Promise<void> {
