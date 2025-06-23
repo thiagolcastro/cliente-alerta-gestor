@@ -187,8 +187,8 @@ const Clients = () => {
                     </DialogTitle>
                   </DialogHeader>
                   <ClientForm
-                    client={selectedClient}
-                    onSave={handleSaveClient}
+                    initialData={selectedClient}
+                    onSubmit={handleSaveClient}
                     onCancel={() => setIsDialogOpen(false)}
                   />
                 </DialogContent>
