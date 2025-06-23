@@ -6,8 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Heart, ShoppingCart, Search, Filter, Star, Sparkles } from 'lucide-react';
+import { Heart, ShoppingCart, Search, Filter, Star, Sparkles, ShoppingBag, Plus, Minus } from 'lucide-react';
 import { productService, Product, ProductCategory } from '@/services/productService';
+import { useToast } from '@/hooks/use-toast';
+
+interface CartItem {
+  product: Product;
+  quantity: number;
+}
 
 const OnlineStore = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -18,7 +24,10 @@ const OnlineStore = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [priceRange, setPriceRange] = useState('');
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadData();
@@ -36,7 +45,6 @@ const OnlineStore = () => {
         productService.getAllCategories()
       ]);
       
-      // Filtrar apenas produtos ativos
       const activeProducts = productsData.filter(product => product.is_active);
       setProducts(activeProducts);
       setCategories(categoriesData.filter(cat => cat.is_active));
@@ -75,6 +83,55 @@ const OnlineStore = () => {
     setFilteredProducts(filtered);
   };
 
+  const addToCart = (product: Product) => {
+    setCart(prev => {
+      const existingItem = prev.find(item => item.product.id === product.id);
+      if (existingItem) {
+        return prev.map(item =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        return [...prev, { product, quantity: 1 }];
+      }
+    });
+    
+    toast({
+      title: "Produto adicionado",
+      description: `${product.name} foi adicionado ao carrinho`
+    });
+  };
+
+  const removeFromCart = (productId: string) => {
+    setCart(prev => prev.filter(item => item.product.id !== productId));
+  };
+
+  const updateQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(productId);
+      return;
+    }
+    
+    setCart(prev =>
+      prev.map(item =>
+        item.product.id === productId
+          ? { ...item, quantity }
+          : item
+      )
+    );
+  };
+
+  const getCartTotal = () => {
+    return cart.reduce((total, item) =>
+      total + (item.product.price * item.quantity), 0
+    );
+  };
+
+  const getCartItemsCount = () => {
+    return cart.reduce((total, item) => total + item.quantity, 0);
+  };
+
   const openProductDialog = (product: Product) => {
     setSelectedProduct(product);
     setIsProductDialogOpen(true);
@@ -85,10 +142,6 @@ const OnlineStore = () => {
       style: 'currency',
       currency: 'BRL'
     }).format(price);
-  };
-
-  const getFeaturedProducts = () => {
-    return filteredProducts.slice(0, 6);
   };
 
   if (loading) {
@@ -104,6 +157,35 @@ const OnlineStore = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white">
+      {/* Header with Cart */}
+      <header className="bg-white/90 backdrop-blur-sm shadow-sm sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ShoppingBag className="w-8 h-8 text-amber-600" />
+              <Sparkles className="w-6 h-6 text-rose-500" />
+              <h1 className="text-2xl font-serif text-gray-800">Semi-Joias Elegantes</h1>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsCartOpen(true)}
+                className="relative border-amber-600 text-amber-600 hover:bg-amber-50"
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Carrinho
+                {getCartItemsCount() > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-amber-600 text-white">
+                    {getCartItemsCount()}
+                  </Badge>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <section className="relative bg-gradient-to-r from-amber-100 to-rose-100 py-20">
         <div className="container mx-auto px-6 text-center">
@@ -114,35 +196,6 @@ const OnlineStore = () => {
             <p className="text-xl text-gray-600 mb-8 leading-relaxed">
               Descubra nossa coleção exclusiva de semi-joias que valorizam sua elegância natural
             </p>
-            <Button size="lg" className="bg-amber-600 hover:bg-amber-700 text-white px-8 py-3 text-lg">
-              Ver Coleção
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Categories Section */}
-      <section className="py-16">
-        <div className="container mx-auto px-6">
-          <h2 className="text-3xl font-serif text-center text-gray-800 mb-12">
-            Nossas Categorias
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {categories.map((category) => (
-              <Card 
-                key={category.id} 
-                className="cursor-pointer hover:shadow-lg transition-shadow bg-white/80 backdrop-blur-sm"
-                onClick={() => setSelectedCategory(category.id)}
-              >
-                <CardContent className="p-6 text-center">
-                  <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Sparkles className="w-8 h-8 text-amber-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-800">{category.name}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{category.description}</p>
-                </CardContent>
-              </Card>
-            ))}
           </div>
         </div>
       </section>
@@ -196,16 +249,16 @@ const OnlineStore = () => {
         <div className="container mx-auto px-6">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-3xl font-serif text-gray-800">
-              {searchTerm || selectedCategory ? 'Resultados da Busca' : 'Produtos em Destaque'}
+              {searchTerm || selectedCategory ? 'Resultados da Busca' : 'Nossa Coleção'}
             </h2>
             <span className="text-gray-600">{filteredProducts.length} produtos</span>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {filteredProducts.map((product) => (
               <Card 
                 key={product.id} 
-                className="group cursor-pointer hover:shadow-xl transition-all duration-300 bg-white overflow-hidden"
+                className="group cursor-pointer hover:shadow-2xl transition-all duration-500 bg-white overflow-hidden border-0 shadow-lg"
                 onClick={() => openProductDialog(product)}
               >
                 <div className="aspect-square bg-gradient-to-br from-amber-50 to-rose-50 relative overflow-hidden">
@@ -213,41 +266,41 @@ const OnlineStore = () => {
                     <img
                       src={product.images[0].image_url}
                       alt={product.images[0].alt_text || product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Sparkles className="w-16 h-16 text-amber-300" />
                     </div>
                   )}
-                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button size="sm" variant="outline" className="bg-white/90">
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <Button size="sm" variant="outline" className="bg-white/90 border-0 shadow-lg">
                       <Heart className="w-4 h-4" />
                     </Button>
                   </div>
                   {product.compare_price && product.compare_price > product.price && (
                     <div className="absolute top-4 left-4">
-                      <Badge className="bg-red-500 text-white">
-                        Oferta
+                      <Badge className="bg-red-500 text-white font-semibold">
+                        -{Math.round(((product.compare_price - product.price) / product.compare_price) * 100)}%
                       </Badge>
                     </div>
                   )}
                 </div>
-                <CardContent className="p-4">
-                  <div className="mb-2">
-                    <h3 className="font-semibold text-gray-800 group-hover:text-amber-600 transition-colors">
+                <CardContent className="p-6">
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-lg text-gray-800 group-hover:text-amber-600 transition-colors duration-300 mb-2">
                       {product.name}
                     </h3>
                     {product.short_description && (
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                      <p className="text-sm text-gray-600 line-clamp-2">
                         {product.short_description}
                       </p>
                     )}
                   </div>
                   
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-gray-800">
+                      <span className="text-xl font-bold text-gray-800">
                         {formatPrice(product.price)}
                       </span>
                       {product.compare_price && product.compare_price > product.price && (
@@ -262,7 +315,13 @@ const OnlineStore = () => {
                     </div>
                   </div>
                   
-                  <Button className="w-full mt-4 bg-amber-600 hover:bg-amber-700">
+                  <Button 
+                    className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addToCart(product);
+                    }}
+                  >
                     <ShoppingCart className="w-4 h-4 mr-2" />
                     Adicionar ao Carrinho
                   </Button>
@@ -272,9 +331,9 @@ const OnlineStore = () => {
           </div>
           
           {filteredProducts.length === 0 && (
-            <div className="text-center py-12">
+            <div className="text-center py-16">
               <Sparkles className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              <h3 className="text-2xl font-semibold text-gray-800 mb-2">
                 Nenhum produto encontrado
               </h3>
               <p className="text-gray-600">
@@ -287,23 +346,23 @@ const OnlineStore = () => {
 
       {/* Product Detail Dialog */}
       <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           {selectedProduct && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-2xl font-serif">
+                <DialogTitle className="text-3xl font-serif">
                   {selectedProduct.name}
                 </DialogTitle>
               </DialogHeader>
               
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-8">
                 <div className="space-y-4">
-                  <div className="aspect-square bg-gradient-to-br from-amber-50 to-rose-50 rounded-lg overflow-hidden">
+                  <div className="aspect-square bg-gradient-to-br from-amber-50 to-rose-50 rounded-2xl overflow-hidden">
                     {selectedProduct.images && selectedProduct.images.length > 0 ? (
                       <img
                         src={selectedProduct.images[0].image_url}
                         alt={selectedProduct.images[0].alt_text || selectedProduct.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
@@ -315,11 +374,11 @@ const OnlineStore = () => {
                   {selectedProduct.images && selectedProduct.images.length > 1 && (
                     <div className="grid grid-cols-4 gap-2">
                       {selectedProduct.images.slice(1, 5).map((image, index) => (
-                        <div key={index} className="aspect-square bg-gray-100 rounded overflow-hidden">
+                        <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                           <img
                             src={image.image_url}
                             alt={image.alt_text || selectedProduct.name}
-                            className="w-full h-full object-cover cursor-pointer hover:opacity-80"
+                            className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
                           />
                         </div>
                       ))}
@@ -330,7 +389,7 @@ const OnlineStore = () => {
                 <div className="space-y-6">
                   <div>
                     <div className="flex items-center gap-4 mb-4">
-                      <span className="text-3xl font-bold text-gray-800">
+                      <span className="text-4xl font-bold text-gray-800">
                         {formatPrice(selectedProduct.price)}
                       </span>
                       {selectedProduct.compare_price && selectedProduct.compare_price > selectedProduct.price && (
@@ -351,21 +410,21 @@ const OnlineStore = () => {
                   </div>
                   
                   {selectedProduct.short_description && (
-                    <p className="text-gray-600 leading-relaxed">
+                    <p className="text-lg text-gray-600 leading-relaxed">
                       {selectedProduct.short_description}
                     </p>
                   )}
                   
                   {selectedProduct.description && (
                     <div>
-                      <h4 className="font-semibold mb-2">Descrição</h4>
+                      <h4 className="font-semibold text-lg mb-3">Descrição</h4>
                       <p className="text-gray-600 leading-relaxed">
                         {selectedProduct.description}
                       </p>
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-2 gap-4 text-sm bg-amber-50 p-4 rounded-lg">
                     {selectedProduct.material && (
                       <div>
                         <span className="font-semibold">Material:</span>
@@ -392,12 +451,15 @@ const OnlineStore = () => {
                     )}
                   </div>
                   
-                  <div className="space-y-3">
-                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-lg py-3">
+                  <div className="space-y-4">
+                    <Button 
+                      className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-lg py-6 shadow-lg hover:shadow-xl transition-all duration-300"
+                      onClick={() => addToCart(selectedProduct)}
+                    >
                       <ShoppingCart className="w-5 h-5 mr-2" />
                       Adicionar ao Carrinho
                     </Button>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full border-amber-600 text-amber-600 hover:bg-amber-50">
                       <Heart className="w-4 h-4 mr-2" />
                       Adicionar aos Favoritos
                     </Button>
@@ -409,52 +471,99 @@ const OnlineStore = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="text-xl font-serif mb-4">Semi-Joias Elegantes</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Transformando momentos especiais em memórias brilhantes com nossa coleção exclusiva.
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">Atendimento</h4>
-              <div className="space-y-2 text-gray-400">
-                <p>WhatsApp: (11) 99999-9999</p>
-                <p>Email: contato@semijoias.com</p>
-                <p>Seg-Sex: 9h às 18h</p>
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">Políticas</h4>
-              <div className="space-y-2">
-                <a href="#" className="text-gray-400 hover:text-white block">Política de Troca</a>
-                <a href="#" className="text-gray-400 hover:text-white block">Frete e Entrega</a>
-                <a href="#" className="text-gray-400 hover:text-white block">Garantia</a>
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">Newsletter</h4>
-              <p className="text-gray-400 mb-4">Receba nossas novidades</p>
-              <div className="flex gap-2">
-                <Input placeholder="Seu email" className="bg-gray-800 border-gray-700 text-white" />
-                <Button className="bg-amber-600 hover:bg-amber-700">
-                  Assinar
-                </Button>
-              </div>
-            </div>
-          </div>
+      {/* Cart Dialog */}
+      <Dialog open={isCartOpen} onOpenChange={setIsCartOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-serif">
+              Carrinho de Compras
+            </DialogTitle>
+          </DialogHeader>
           
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Semi-Joias Elegantes. Todos os direitos reservados.</p>
-          </div>
-        </div>
-      </footer>
+          {cart.length === 0 ? (
+            <div className="text-center py-12">
+              <ShoppingCart className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Seu carrinho está vazio
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Adicione produtos para continuar suas compras
+              </p>
+              <Button onClick={() => setIsCartOpen(false)}>
+                Continuar Comprando
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="space-y-4">
+                {cart.map((item) => (
+                  <div key={item.product.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                    {item.product.images && item.product.images.length > 0 ? (
+                      <img
+                        src={item.product.images[0].image_url}
+                        alt={item.product.name}
+                        className="w-16 h-16 object-cover rounded"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
+                        <Sparkles className="w-8 h-8 text-gray-400" />
+                      </div>
+                    )}
+                    
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{item.product.name}</h3>
+                      <p className="text-sm text-gray-600">{formatPrice(item.product.price)}</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                      >
+                        <Minus className="w-4 h-4" />
+                      </Button>
+                      <span className="w-8 text-center">{item.quantity}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => removeFromCart(item.product.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-center text-xl font-semibold mb-4">
+                  <span>Total:</span>
+                  <span>{formatPrice(getCartTotal())}</span>
+                </div>
+                
+                <div className="space-y-2">
+                  <Button className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white">
+                    Finalizar Compra
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={() => setIsCartOpen(false)}>
+                    Continuar Comprando
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

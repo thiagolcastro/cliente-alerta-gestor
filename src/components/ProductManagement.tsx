@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Upload, Download, Image } from 'lucide-react';
+import { Plus, Edit, Trash2, Upload, Download, Image, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { productService, Product, ProductCategory } from '@/services/productService';
 
@@ -20,6 +20,7 @@ const ProductManagement = () => {
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const { toast } = useToast();
 
   const [productForm, setProductForm] = useState({
@@ -35,6 +36,9 @@ const ProductManagement = () => {
     weight: 0,
     is_active: true
   });
+
+  const [productImages, setProductImages] = useState<File[]>([]);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
 
   const [categoryForm, setCategoryForm] = useState({
     name: '',
@@ -66,21 +70,58 @@ const ProductManagement = () => {
     }
   };
 
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length + productImages.length > 5) {
+      toast({
+        title: "Erro",
+        description: "Máximo de 5 imagens por produto",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setProductImages(prev => [...prev, ...files]);
+    
+    // Create preview URLs
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewImages(prev => [...prev, e.target?.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setProductImages(prev => prev.filter((_, i) => i !== index));
+    setPreviewImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSaveProduct = async () => {
     try {
+      setUploadingImages(true);
+      let product;
+      
       if (selectedProduct) {
-        await productService.updateProduct(selectedProduct.id, productForm);
-        toast({
-          title: "Sucesso",
-          description: "Produto atualizado com sucesso"
-        });
+        product = await productService.updateProduct(selectedProduct.id, productForm);
       } else {
-        await productService.createProduct(productForm);
-        toast({
-          title: "Sucesso",
-          description: "Produto criado com sucesso"
-        });
+        product = await productService.createProduct(productForm);
       }
+
+      // Upload images if any
+      if (productImages.length > 0) {
+        for (let i = 0; i < productImages.length; i++) {
+          const imageUrl = await productService.uploadProductImage(productImages[i], product.id);
+          await productService.addProductImage(product.id, imageUrl, productImages[i].name, i === 0);
+        }
+      }
+
+      toast({
+        title: "Sucesso",
+        description: selectedProduct ? "Produto atualizado com sucesso" : "Produto criado com sucesso"
+      });
+      
       setIsProductDialogOpen(false);
       resetProductForm();
       loadData();
@@ -90,6 +131,8 @@ const ProductManagement = () => {
         description: "Erro ao salvar produto",
         variant: "destructive"
       });
+    } finally {
+      setUploadingImages(false);
     }
   };
 
@@ -131,55 +174,6 @@ const ProductManagement = () => {
     }
   };
 
-  const handleExportProducts = async () => {
-    try {
-      const csvContent = await productService.exportProducts();
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'produtos.csv';
-      a.click();
-      window.URL.revokeObjectURL(url);
-      
-      toast({
-        title: "Sucesso",
-        description: "Produtos exportados com sucesso"
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao exportar produtos",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleImportProducts = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const csvContent = e.target?.result as string;
-          await productService.importProducts(csvContent);
-          toast({
-            title: "Sucesso",
-            description: "Produtos importados com sucesso"
-          });
-          loadData();
-        } catch (error) {
-          toast({
-            title: "Erro",
-            description: "Erro ao importar produtos",
-            variant: "destructive"
-          });
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-
   const resetProductForm = () => {
     setProductForm({
       name: '',
@@ -195,6 +189,8 @@ const ProductManagement = () => {
       is_active: true
     });
     setSelectedProduct(null);
+    setProductImages([]);
+    setPreviewImages([]);
   };
 
   const resetCategoryForm = () => {
@@ -233,30 +229,6 @@ const ProductManagement = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Gerenciamento de Produtos</h1>
-        <div className="flex gap-2">
-          <Button onClick={handleExportProducts} variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Exportar
-          </Button>
-          <label>
-            <Button variant="outline" asChild>
-              <span>
-                <Upload className="w-4 h-4 mr-2" />
-                Importar
-              </span>
-            </Button>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleImportProducts}
-              className="hidden"
-            />
-          </label>
-        </div>
-      </div>
-
       <Tabs defaultValue="products" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="products">Produtos</TabsTrigger>
@@ -273,13 +245,54 @@ const ProductManagement = () => {
                   Novo Produto
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
                     {selectedProduct ? 'Editar Produto' : 'Novo Produto'}
                   </DialogTitle>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
+                <div className="grid gap-6 py-4">
+                  {/* Image Upload Section */}
+                  <div className="space-y-4">
+                    <Label>Imagens do Produto (máximo 5)</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {previewImages.map((preview, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={preview}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-32 object-cover rounded-lg border"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full p-0"
+                            onClick={() => removeImage(index)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      {productImages.length < 5 && (
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <Image className="w-8 h-8 mb-2 text-gray-400" />
+                            <p className="text-xs text-gray-500">Clique para adicionar</p>
+                          </div>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageUpload}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Product Form */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="name">Nome</Label>
@@ -391,8 +404,8 @@ const ProductManagement = () => {
                   <Button variant="outline" onClick={() => setIsProductDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button onClick={handleSaveProduct}>
-                    Salvar
+                  <Button onClick={handleSaveProduct} disabled={uploadingImages}>
+                    {uploadingImages ? 'Salvando...' : 'Salvar'}
                   </Button>
                 </div>
               </DialogContent>
@@ -404,18 +417,27 @@ const ProductManagement = () => {
               <Card key={product.id}>
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold">{product.name}</h3>
-                        <Badge variant={product.is_active ? "default" : "secondary"}>
-                          {product.is_active ? "Ativo" : "Inativo"}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{product.short_description}</p>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="font-semibold">R$ {product.price.toFixed(2)}</span>
-                        {product.sku && <span>SKU: {product.sku}</span>}
-                        {product.category?.name && <span>Categoria: {product.category.name}</span>}
+                    <div className="flex gap-4 flex-1">
+                      {product.images && product.images.length > 0 && (
+                        <img
+                          src={product.images[0].image_url}
+                          alt={product.name}
+                          className="w-20 h-20 object-cover rounded"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold">{product.name}</h3>
+                          <Badge variant={product.is_active ? "default" : "secondary"}>
+                            {product.is_active ? "Ativo" : "Inativo"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">{product.short_description}</p>
+                        <div className="flex items-center gap-4 text-sm">
+                          <span className="font-semibold">R$ {product.price.toFixed(2)}</span>
+                          {product.sku && <span>SKU: {product.sku}</span>}
+                          {product.category?.name && <span>Categoria: {product.category.name}</span>}
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-2">

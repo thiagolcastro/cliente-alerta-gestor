@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import React, { useState } from 'react';
 import { Search, Trash2, Phone, Mail as MailIcon, Calendar, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,18 +8,17 @@ import { Client } from '@/types/client';
 
 interface ClientListProps {
   clients: Client[];
-  onDeleteClient: (id: string) => void;
-  onEditClient: (client: Client) => void;
-  inactiveMonths?: number;
+  onEdit: (client: Client) => void;
+  onDelete: (id: string) => void;
 }
 
-const ClientList = ({ clients, onDeleteClient, onEditClient, inactiveMonths = 3 }: ClientListProps) => {
+const ClientList = ({ clients, onEdit, onDelete }: ClientListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredClients = clients.filter(client =>
     client.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.telefone.includes(searchTerm)
+    (client.telefone && client.telefone.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const formatDate = (dateString: string) => {
@@ -31,14 +31,6 @@ const ClientList = ({ clients, onDeleteClient, onEditClient, inactiveMonths = 3 
       style: 'currency',
       currency: 'BRL'
     }).format(value);
-  };
-
-  const isInactive = (ultimaCompra: string) => {
-    if (!ultimaCompra) return true;
-    const lastPurchase = new Date(ultimaCompra);
-    const thresholdDate = new Date();
-    thresholdDate.setMonth(thresholdDate.getMonth() - inactiveMonths);
-    return lastPurchase < thresholdDate;
   };
 
   const isBirthdayThisMonth = (dataNascimento: string) => {
@@ -81,11 +73,6 @@ const ClientList = ({ clients, onDeleteClient, onEditClient, inactiveMonths = 3 
                         <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           Aniversário
-                        </span>
-                      )}
-                      {isInactive(client.ultimaCompra) && (
-                        <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
-                          Inativo
                         </span>
                       )}
                     </div>
@@ -134,7 +121,7 @@ const ClientList = ({ clients, onDeleteClient, onEditClient, inactiveMonths = 3 
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onEditClient(client)}
+                      onClick={() => onEdit(client)}
                       className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
                     >
                       <Edit className="h-4 w-4" />
@@ -142,7 +129,7 @@ const ClientList = ({ clients, onDeleteClient, onEditClient, inactiveMonths = 3 
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onDeleteClient(client.id)}
+                      onClick={() => onDelete(client.id)}
                       className="text-red-500 hover:text-red-700 hover:bg-red-50"
                     >
                       <Trash2 className="h-4 w-4" />
