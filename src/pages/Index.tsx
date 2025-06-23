@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,21 +12,21 @@ const Index = () => {
       title: 'Clientes',
       description: 'Gerenciar clientes e contatos',
       icon: Users,
-      action: () => console.log('Clientes clicked'),
+      action: () => navigate('/clients'),
       color: 'bg-blue-500'
     },
     {
       title: 'Produtos',
       description: 'Catálogo e estoque',
       icon: ShoppingBag,
-      action: () => console.log('Produtos clicked'),
+      action: () => navigate('/products'),
       color: 'bg-green-500'
     },
     {
       title: 'Relatórios',
       description: 'Dashboard e análises',
       icon: BarChart3,
-      action: () => console.log('Relatórios clicked'),
+      action: () => navigate('/reports'),
       color: 'bg-purple-500'
     },
     {
@@ -41,7 +40,7 @@ const Index = () => {
       title: 'Configurações',
       description: 'Configurações do sistema',
       icon: Settings,
-      action: () => console.log('Configurações clicked'),
+      action: () => navigate('/settings'),
       color: 'bg-gray-500'
     }
   ];
